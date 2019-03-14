@@ -1,5 +1,6 @@
 import * as twgl from "twgl.js";
 
+import { EventManager2 } from "./eventManager";
 import { spliceArray, spliceData } from "./utils";
 import { setupTextures } from "./imageMapUtils";
 
@@ -44,9 +45,12 @@ export async function loadTextures(texturePaths) {
 ////////////////////
 export let width = 0;
 export let height = 0;
+export const Resized = new EventManager2();
+
 function resize() {
   canvas.width = width = window.innerWidth;
   canvas.height = height = window.innerHeight;
+  Resized.Publish(width, height);
 }
 
 window.addEventListener("resize", resize);
