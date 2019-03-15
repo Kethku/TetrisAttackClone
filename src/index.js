@@ -5,6 +5,7 @@ import { drawToScreen, loadTextures, width, height } from "./graphics";
 import images from "./images/*.png";
 
 import "./grid";
+import "./touch";
 
 let imageUrls = Object.values(images);
 

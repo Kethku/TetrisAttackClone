@@ -1,54 +1,58 @@
+import { Vector, Color } from "./math";
 import { Update, Draw } from "./events";
-import { image, width, height } from "./graphics";
+import { image, screenSize } from "./graphics";
 import { Block } from "./block";
 
 import bang from "./images/Bang.png";
 
-export const gridBlockWidth = 6;
-export const gridBlockHeight = 12;
+export const gridBlockDimensions = new Vector(6, 12);
 
 const startingMargin = 0.1;
 
 let blocks = [];
 
 let maxStackHeight = 5;
-for (let x = 0; x < gridBlockWidth; x++) {
+for (let x = 0; x < gridBlockDimensions.x; x++) {
   let stackHeight = Math.floor(Math.random() * 4) + maxStackHeight - 3;
   for (let y = 0; y < stackHeight; y++) {
-    blocks.push(new Block(x, maxStackHeight - y));
+    blocks.push(new Block(new Vector(x, maxStackHeight - y)));
   }
 }
 
 function calculateGridPosition() {
-  let margin = Math.max(width * startingMargin, height * startingMargin);
-  let maxWidth = width - margin;
-  let maxHeight = height - margin;
+  let gridCenter = screenSize.divide(2);
+
+  let margin = Math.max(screenSize.width * startingMargin, screenSize.height * startingMargin);
+  let maxWidth = screenSize.width - margin;
+  let maxHeight = screenSize.height - margin;
 
   // Try Horizontal
-  let gridWidth = maxWidth;
-  let gridHeight = gridWidth * 2;
+  let gridDimensions = new Vector(maxWidth, maxWidth * 2);
 
-  if (gridHeight > maxHeight) {
+  if (gridDimensions.y > maxHeight) {
     // Fallback to vertical
-    gridHeight = maxHeight;
-    gridWidth = gridHeight / 2;
+    gridDimensions = new Vector(maxHeight / 2, maxHeight);
   }
 
-  let gridLeft = (width - gridWidth) / 2;
-  let gridTop = (height - gridHeight) / 2 + gridHeight;
-
-  let blockWidth = gridHeight / gridBlockHeight;
-
-  return { gridWidth, gridHeight, gridLeft, gridTop, blockWidth };
+  return { gridCenter, gridDimensions };
 }
 
-Draw.Subscribe(() => {
-  let { gridWidth, gridHeight, gridLeft, gridTop, blockWidth } = calculateGridPosition();
-  let blocksTop = gridTop - gridHeight + maxStackHeight * blockWidth;
+Update.Subscribe(() => {
+  let { gridCenter, gridDimensions } = calculateGridPosition();
+  let blockWidth = gridDimensions.x / gridBlockDimensions.x;
 
-  image(bang, gridLeft + gridWidth / 2, gridTop - gridHeight / 2, gridWidth, gridHeight);
 
   for (let block of blocks) {
-    block.render(gridLeft, blocksTop, gridWidth);
+    block.update(gridCenter, gridDimensions, blockWidth, (maxStackHeight + 1) * blockWidth);
+  }
+});
+
+Draw.Subscribe(() => {
+  let { gridCenter, gridDimensions } = calculateGridPosition();
+  image(bang, gridCenter, gridDimensions, 0, new Color(0.5, 0.5, 0.5, 1));
+
+  let blockWidth = gridDimensions.x / gridBlockDimensions.x;
+  for (let block of blocks) {
+    block.render(gridCenter, gridDimensions, blockWidth, (maxStackHeight + 1) * blockWidth);
   }
 });

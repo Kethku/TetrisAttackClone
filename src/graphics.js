@@ -1,8 +1,9 @@
 import * as twgl from "twgl.js";
 
-import { EventManager2 } from "./eventManager";
+import { EventManager1 } from "./eventManager";
 import { spliceArray, spliceData } from "./utils";
 import { setupTextures } from "./imageMapUtils";
+import { Vector, Color } from "./math";
 
 import vert from './shaders/vert.glsl';
 import frag from './shaders/frag.glsl';
@@ -10,7 +11,7 @@ import frag from './shaders/frag.glsl';
 ///////////////////////
 // Initialize Canvas //
 ///////////////////////
-const canvas = document.createElement("canvas");
+export const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
 const gl = canvas.getContext("webgl", {alpha: false});
 let spriteProgram = twgl.createProgramInfo(gl, [vert, frag]);
@@ -43,14 +44,16 @@ export async function loadTextures(texturePaths) {
 ////////////////////
 // Setup Resizing //
 ////////////////////
-export let width = 0;
-export let height = 0;
-export const Resized = new EventManager2();
+export let screenSize = Vector.zero;
+export const Resized = new EventManager1();
 
 function resize() {
-  canvas.width = width = window.innerWidth;
-  canvas.height = height = window.innerHeight;
-  Resized.Publish(width, height);
+  screenSize = new Vector(window.innerWidth, window.innerHeight);
+
+  canvas.width = screenSize.x;
+  canvas.height = screenSize.y;
+
+  Resized.Publish(screenSize);
 }
 
 window.addEventListener("resize", resize);
@@ -60,8 +63,8 @@ resize();
 // Draw APIs //
 ///////////////
 let imagesToDraw = [];
-export function image(imageUrl, centerX, centerY, width, height, rotation = 0, z = 0) {
-  imagesToDraw.push({ imageUrl, centerX, centerY, width, height, rotation, z });
+export function image(imageUrl, position, dimensions, rotation = 0, color = Color.white, center = Vector.half) {
+  imagesToDraw.push({ imageUrl, position, dimensions, rotation, color, center });
 }
 
 ////////////////
@@ -70,10 +73,10 @@ export function image(imageUrl, centerX, centerY, width, height, rotation = 0, z
 export function drawToScreen() {
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.viewport(0, 0, width, height);
+  gl.viewport(0, 0, screenSize.x, screenSize.y);
 
   twgl.setUniforms(spriteProgram, {
-    u_camera_dimensions: [0, 0, width, height],
+    u_camera_dimensions: [0, 0, screenSize.x, screenSize.y],
     u_texmap: textures.texture,
     u_map_dimensions: textures.size
   });
@@ -100,22 +103,22 @@ export function drawToScreen() {
   for (let imageToDraw of imagesToDraw) {
     spliceData(spriteArrays.a_coord, index, [ 0, 1, 1, 1, 0, 0, 1, 0 ]);
     spliceData(spriteArrays.a_position, index, [
-      imageToDraw.centerX,
-      imageToDraw.centerY,
-      imageToDraw.z || 0
+      imageToDraw.position.x,
+      imageToDraw.position.y,
+      imageToDraw.position.z
     ]);
     spliceData(spriteArrays.a_texcoord, index, textures.texCoords[imageToDraw.imageUrl]);
     spliceData(spriteArrays.a_rotation, index, [imageToDraw.rotation || 0]);
     spliceData(spriteArrays.a_dimensions, index, [
-      imageToDraw.width,
-      imageToDraw.height
+      imageToDraw.dimensions.x,
+      imageToDraw.dimensions.y
     ]);
     spliceData(spriteArrays.a_center, index, [
-      0.5,
-      0.5
+      imageToDraw.center.x,
+      imageToDraw.center.y
     ]);
     spliceData(spriteArrays.a_scale, index, [1]);
-    spliceData(spriteArrays.a_color, index, [1, 1, 1, 1]);
+    spliceData(spriteArrays.a_color, index, [imageToDraw.color.r, imageToDraw.color.g, imageToDraw.color.b, imageToDraw.color.a]);
     let offset = index * 4;
     spliceArray(spriteArrays.indices.data, index * 6,
                 [offset + 0, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3]);

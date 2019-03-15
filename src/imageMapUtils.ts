@@ -23,7 +23,6 @@ export function packTextures(images: {
     correctSize = true;
     let gap = 10;
     size *= 2;
-    console.log("size: " + size);
     let x = gap;
     let y = gap;
     let rowHeight = imageArray[0].image.height;
@@ -44,14 +43,11 @@ export function packTextures(images: {
         x = gap;
         y += rowHeight + gap;
         if (y + image.height + gap > size) {
-          console.log("size " + size + " is too small")
           correctSize = false;
           break;
         }
         rowHeight = image.height + gap;
       }
-
-      console.log("x: " + x, "y: " + y);
     }
   } while (!correctSize);
 
