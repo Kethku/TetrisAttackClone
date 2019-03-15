@@ -12,6 +12,7 @@ import frag from './shaders/frag.glsl';
 // Initialize Canvas //
 ///////////////////////
 export const canvas = document.createElement("canvas");
+canvas.setAttribute("touch-action", "none");
 document.body.appendChild(canvas);
 const gl = canvas.getContext("webgl", {alpha: false});
 let spriteProgram = twgl.createProgramInfo(gl, [vert, frag]);
