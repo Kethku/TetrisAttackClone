@@ -1,3 +1,3 @@
-clean: rm index*; rm src.*; rm *.png
+clean: rm .cache -for -rec -ErrorAction SilentlyContinue; rm index*; rm src.*; rm *.png
 dev: ok clean; parcel src/index.html -d .
 build: parcel build src/index.html -d . --public-url ./

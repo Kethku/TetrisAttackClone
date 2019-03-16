@@ -1,6 +1,7 @@
 import { Vector, Color } from "./math";
 import { image } from "./graphics";
 import { touchPosition, touchDown } from "./touch";
+import { gridCenter, gridDimensions, blockWidth, blockPixelAdvancement } from "./grid";
 import blockImages from "./images/*.png";
 
 const types = {
@@ -22,12 +23,13 @@ export class Block {
   constructor(blockPosition) {
     this.type = randomType();
     this.blockPosition = blockPosition;
+    this.enabled = false;
   }
 
-  calculateLocation(gridCenter, gridDimensions, blockWidth, blocksAdvancement) {
+  calculateLocation() {
     let blocksTopLeft = new Vector(
       gridCenter.x - gridDimensions.width / 2,
-      gridCenter.y - gridDimensions.height / 2 + blocksAdvancement);
+      gridCenter.y - gridDimensions.height / 2 + blockPixelAdvancement);
 
     // To get the actual position of a block, add the block position times the
     // block width with the y axis reversed.
@@ -37,8 +39,21 @@ export class Block {
     return { topLeft, dimensions };
   }
 
-  update(gridCenter, gridDimensions, blockWidth, blocksAdvancement) {
-    let { topLeft, dimensions } = this.calculateLocation(gridCenter, gridDimensions, blockWidth, blocksAdvancement);
+  calculateOpacity(blockTop) {
+    let gridBottom = gridCenter.y - gridDimensions.height / 2;
+    let amountBelow = (blockTop - blockWidth) - gridBottom;
+
+    if (amountBelow >= 0) {
+      this.enabled = true;
+      return 1;
+    }
+    if (amountBelow < -blockWidth) return 0;
+
+    return (amountBelow + blockWidth) / (blockWidth * 2);
+  }
+
+  update() {
+    let { topLeft, dimensions } = this.calculateLocation();
 
     if (touchDown) {
       if (touchPosition.x >= topLeft.x && touchPosition.x <= topLeft.x + dimensions.width &&
@@ -52,9 +67,11 @@ export class Block {
   // bottom of the grid position. The y value of the blockPosition is actually
   // reversed to prevent needing to increment all block positions as they move
   // up the screen.
-  render(gridCenter, gridDimensions, blockWidth, blocksAdvancement) {
-    let { topLeft, dimensions } = this.calculateLocation(gridCenter, gridDimensions, blockWidth, blocksAdvancement);
+  render() {
+    let { topLeft, dimensions } = this.calculateLocation();
 
-    image(blockImages[this.type], topLeft, dimensions, 0, Color.white, Vector.topLeft);
+    let opacity = this.calculateOpacity(topLeft.y);
+    let tint = new Color(1, 1, 1, opacity);
+    image(blockImages[this.type], topLeft, dimensions, 0, tint, Vector.topLeft);
   }
 }

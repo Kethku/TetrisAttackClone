@@ -89,5 +89,6 @@ export class Color {
 }
 
 Color.white = new Color(1, 1, 1, 1);
+Color.gray = new Color(0.5, 0.5, 0.5, 1);
 Color.black = new Color(0, 0, 0, 1);
 Color.clear = new Color(0, 0, 0, 0);
