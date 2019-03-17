@@ -4,13 +4,17 @@ import { canvas, screenSize } from "./graphics";
 
 export let touchPosition = Vector.zero;
 
+export let touchId = null;
 export let touchDown = false;
 export let touchStarted = false;
 export let touchReleased = false;
 
 function handlePointerEvent(e) {
-  touchPosition = new Vector(e.clientX, screenSize.height - e.clientY);
-  touchDown = e.pressure > 0.1;
+  if (!touchDown || touchId == e.touchId) {
+    touchId = e.touchId;
+    touchPosition = new Vector(e.clientX, screenSize.height - e.clientY);
+    touchDown = e.pressure > 0;
+  }
 }
 
 let previousDown = false;

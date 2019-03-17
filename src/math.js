@@ -1,3 +1,9 @@
+/////////////////////////////
+// Deal with parcel reload //
+/////////////////////////////
+import { refreshOnReload } from "./utils";
+refreshOnReload(module);
+
 export class Vector {
   constructor(x, y, z = 0) {
     this.x = x;
@@ -27,6 +33,22 @@ export class Vector {
 
   get height() {
     return this.y;
+  }
+
+  withX(x) {
+    return new Vector(x, this.y, this.z);
+  }
+
+  withY(y) {
+    return new Vector(this.x, y, this.z);
+  }
+
+  withZ(z) {
+    return new Vector(this.x, this.y, z);
+  }
+
+  clone() {
+    return new Vector(this.x, this.y, this.z);
   }
 
   distance(other) {
@@ -64,11 +86,23 @@ export class Vector {
   ceil() {
     return new Vector(Math.ceil(this.x), Math.ceil(this.y), Math.ceil(this.z));
   }
+
+  within(center, dimensions) {
+    let halfWidth = dimensions.width / 2;
+    let halfHeight = dimensions.height / 2;
+    return this.x >= center.x - halfWidth && this.x <= center.x + halfWidth &&
+           this.y >= center.y - halfHeight && this.y <= center.y + halfHeight;
+  }
+
+  equals(other) {
+    return this.x === other.x && this.y === other.y && this.z === other.z;
+  }
 }
 
 Vector.zero = new Vector(0, 0, 0);
 Vector.one = new Vector(1, 1, 1);
 Vector.half = new Vector(0.5, 0.5, 0.5);
+Vector.center = Vector.half;
 Vector.topLeft = new Vector(0, 1);
 Vector.topRight = new Vector(1, 1);
 Vector.bottomRight = new Vector(1, 0);

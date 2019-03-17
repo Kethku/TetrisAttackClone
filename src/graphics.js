@@ -8,6 +8,12 @@ import { Vector, Color } from "./math";
 import vert from './shaders/vert.glsl';
 import frag from './shaders/frag.glsl';
 
+/////////////////////////////
+// Deal with parcel reload //
+/////////////////////////////
+import { refreshOnReload } from "./utils";
+refreshOnReload(module);
+
 ///////////////////////
 // Initialize Canvas //
 ///////////////////////
@@ -35,7 +41,6 @@ let textures;
 export async function loadTextures(texturePaths) {
   textures = await setupTextures(gl, texturePaths);
   //document.body.appendChild(textures.canvas);
-  gl.disable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
@@ -51,8 +56,8 @@ export const Resized = new EventManager1();
 function resize() {
   screenSize = new Vector(window.innerWidth, window.innerHeight);
 
-  canvas.width = screenSize.x;
-  canvas.height = screenSize.y;
+  canvas.width = screenSize.width;
+  canvas.height = screenSize.height;
 
   Resized.Publish(screenSize);
 }
@@ -100,6 +105,7 @@ export function drawToScreen() {
     }
   }
 
+  imagesToDraw.sort((a, b) => a.position.z - b.position.z);
   let index = 0;
   for (let imageToDraw of imagesToDraw) {
     spliceData(spriteArrays.a_coord, index, [ 0, 1, 1, 1, 0, 0, 1, 0 ]);
