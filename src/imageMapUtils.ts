@@ -1,5 +1,11 @@
 import * as twgl from "twgl.js";
 
+/////////////////////////////
+// Deal with parcel reload //
+/////////////////////////////
+import { refreshOnReload } from "./utils";
+refreshOnReload(module);
+
 export interface TextureInfo {
   size: number;
   canvas: HTMLCanvasElement;

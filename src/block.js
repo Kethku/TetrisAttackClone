@@ -2,6 +2,7 @@ import { Vector, Color } from "./math";
 import { image } from "./graphics";
 import { touchPosition, touchDown, touchStarted } from "./touch";
 import { blocks, gridCenter, gridDimensions, gridBlockDimensions, blockWidth, blockPixelAdvancement, intentionalAdvance } from "./grid";
+import { clearingTime } from "./match";
 import blockImages from "./images/*.png";
 
 /////////////////////////////
@@ -14,12 +15,12 @@ const pickingUpFrameLength = 5;
 const pickedUpScale = 1.2;
 const maxDragVelocity = 0.9;
 const scaleVelocity = 0.08;
-const settleVelocity = 0.5;
+const settleVelocity = 0.7;
 const swapFrameLength = 30;
-const fallSpeed = 0.1;
+const fallSpeed = 0.3;
 const rotateSpeed = 0.3;
 
-export const types = {
+export const type = {
   CIRCLE: "Circle",
   TRIANGLE_UP: "TriangleUp",
   TRIANGLE_DOWN: "TriangleDown",
@@ -35,18 +36,23 @@ export const state = {
   DRAGGING: "Dragging",
   FALLING: "Falling",
   MATCHED: "Matched",
-  CLEARING: "Clearing"
+  CLEARING: "Clearing",
+  CLEARED: "Cleared"
 };
 
 export let heldBlock = null;
 
 function randomType() {
-  let keys = Object.keys(types);
-  return types[keys[Math.floor(Math.random() * keys.length)]];
+  let keys = Object.keys(type);
+  return type[keys[Math.floor(Math.random() * keys.length)]];
 }
 
 export function deleteBlock(block) {
   blocks[block.gridSlot.y][block.gridSlot.x] = null;
+  dropBlock(block);
+}
+
+export function dropBlock(block) {
   if (heldBlock === block) heldBlock = null;
 }
 
@@ -72,20 +78,49 @@ export class Block {
     return { center: topLeft.add(dimensions.divide(2).multiplyParts(new Vector(1, -1))), dimensions };
   }
 
-  calculateOpacity(centerY) {
-    let gridBottom = gridCenter.y - gridDimensions.height / 2;
-    let blockBottom = centerY - blockWidth / 2;
-    let distanceFromBottom = blockBottom - gridBottom;
+  calculateColor(centerY) {
+    if (this.state === state.MATCHED) {
+      return new Color(1.5, 1.5, 1.5, 1);
+    } else if (this.state === state.CLEARING) {
+      let percentageDone = this.clearTimer / clearingTime;
+      return new Color(1, 1, 1, 1 - percentageDone);
+    } else if (this.state === state.CLEARED) {
+      return Color.clear;
+    } else if (this.state === state.SPAWNING) {
+      let gridBottom = gridCenter.y - gridDimensions.height / 2;
+      let blockBottom = centerY - blockWidth / 2;
+      let distanceFromBottom = blockBottom - gridBottom;
 
-    if (distanceFromBottom >= 0) {
-      if (this.state === state.SPAWNING) {
-        this.state = state.WAITING;
+      if (distanceFromBottom >= 0) {
+        if (this.state === state.SPAWNING) {
+          this.state = state.WAITING;
+        }
+        return 1;
       }
-      return 1;
-    }
-    if (distanceFromBottom < -blockWidth) return 0;
+      if (distanceFromBottom < -blockWidth) return 0;
 
-    return (distanceFromBottom + blockWidth) / (blockWidth * 2);
+      return new Color(1, 1, 1, (distanceFromBottom + blockWidth) / (blockWidth * 2));
+    } else {
+      return Color.white;
+    }
+  }
+
+  animateBlockSize() {
+    if (this.state === state.CLEARING) {
+      this.scale += 0.01;
+    } else if (this.state === state.DRAGGING) {
+      if (this.scale < pickedUpScale) {
+        this.scale += scaleVelocity;
+      } else {
+        this.scale = pickedUpScale;
+      }
+    } else {
+      if (this.scale > 1) {
+        this.scale -= scaleVelocity;
+      } else {
+        this.scale = 1;
+      }
+    }
   }
 
   handleDragging(center, dimensions) {
@@ -108,7 +143,27 @@ export class Block {
         let diff = newGridXTarget - this.gridPosition.x;
         if (diff > maxDragVelocity) diff = maxDragVelocity;
         if (diff < -maxDragVelocity) diff = -maxDragVelocity;
+
         this.gridPosition.x += diff;
+
+        // Handle Boundaries
+        if (this.gridSlot.x > 0) {
+          let leftBlock = blocks[this.gridSlot.y][this.gridSlot.x - 1];
+          if (leftBlock && leftBlock.state !== state.WAITING) {
+            if (this.gridPosition.x < this.gridSlot.x) {
+              this.gridPosition.x = this.gridSlot.x;
+            }
+          }
+        }
+
+        if (this.gridSlot.x < 5) {
+          let rightBlock = blocks[this.gridSlot.y][this.gridSlot.x + 1];
+          if (rightBlock && rightBlock.state !== state.WAITING) {
+            if (this.gridPosition.x > this.gridSlot.x) {
+              this.gridPosition.x = this.gridSlot.x;
+            }
+          }
+        }
 
         if (this.gridPosition.x < 0) this.gridPosition.x = 0;
         if (this.gridPosition.x > 5) this.gridPosition.x = 5;
@@ -138,7 +193,14 @@ export class Block {
   }
 
   handleFalling(center, dimensions) {
-    if (this.state !== state.SPAWNING && !blocks[this.gridSlot.y + 1][this.gridSlot.x]) {
+    if (this.state === state.SPAWNING ||
+        this.state === state.MATCHED ||
+        this.state === state.CLEARING ||
+        this.state === state.CLEARED) {
+      return;
+    }
+
+    if (!blocks[this.gridSlot.y + 1][this.gridSlot.x]) {
       this.state = state.FALLING;
       if (heldBlock === this) heldBlock = null;
     }
@@ -159,18 +221,14 @@ export class Block {
     }
   }
 
-  animateBlockSize() {
-    if (this.state === state.DRAGGING) {
-      if (this.scale < pickedUpScale) {
-        this.scale += scaleVelocity;
-      } else {
-        this.scale = pickedUpScale;
-      }
-    } else {
-      if (this.scale > 1) {
-        this.scale -= scaleVelocity;
-      } else {
-        this.scale = 1;
+  handleClearAnimation() {
+    if (this.state === state.CLEARING) {
+      if (!this.clearTimer) this.clearTimer = 0;
+      this.clearTimer++;
+
+      let percentDone = this.clearTimer / clearingTime;
+      if (this.clearTimer >= clearingTime) {
+        this.state = state.CLEARED;
       }
     }
   }
@@ -181,23 +239,18 @@ export class Block {
     this.handleDragging(center, dimensions);
     this.handleFalling(center, dimensions);
     this.animateBlockSize();
+    this.handleClearAnimation();
 
     if (this.state === state.SPAWNING && touchPosition.within(center, dimensions) && touchStarted) {
       intentionalAdvance();
     }
   }
 
-  // Blocks are positioned in a sliding grid up from the bottom starting at the
-  // bottom of the grid position. The y value of the gridPosition is actually
-  // reversed to prevent needing to increment all block positions as they move
-  // up the screen.
   render() {
     let { center, dimensions } = this.calculateLocation();
 
-    let opacity = this.calculateOpacity(center.y);
-    let tint = new Color(1, 1, 1, opacity);
-
-    if (this.state === state.DRAGGING) {
+    let tint = this.calculateColor(center.y);
+    if (this.state === state.DRAGGING || this.state === state.CLEARING) {
       center = center.withZ(10);
     }
     dimensions = dimensions.multiply(this.scale);

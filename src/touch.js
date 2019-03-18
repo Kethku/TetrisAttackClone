@@ -2,8 +2,13 @@ import { Vector } from "./math";
 import { Update } from "./events";
 import { canvas, screenSize } from "./graphics";
 
-export let touchPosition = Vector.zero;
+/////////////////////////////
+// Deal with parcel reload //
+/////////////////////////////
+import { refreshOnReload } from "./utils";
+refreshOnReload(module);
 
+export let touchPosition = Vector.zero;
 export let touchId = null;
 export let touchDown = false;
 export let touchStarted = false;

@@ -7,6 +7,12 @@ import images from "./images/*.png";
 import "./grid";
 import "./touch";
 
+/////////////////////////////
+// Deal with parcel reload //
+/////////////////////////////
+import { refreshOnReload } from "./utils";
+refreshOnReload(module);
+
 let imageUrls = Object.values(images);
 
 let frames = 0;

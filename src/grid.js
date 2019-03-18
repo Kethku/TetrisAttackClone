@@ -2,6 +2,7 @@ import { Vector, Color } from "./math";
 import { Update, Draw } from "./events";
 import { image, screenSize, Resized } from "./graphics";
 import { deleteBlock, heldBlock, state, Block } from "./block";
+import { matches } from "./match";
 
 import bang from "./images/Bang.png";
 
@@ -14,15 +15,14 @@ refreshOnReload(module);
 const startingMargin = 0.05;
 const maxInitialStackHeight = 5;
 export const gridBlockDimensions = new Vector(6, 12);
+const advanceAcceleration = 0.000001;
 
 /////////////////
 // Setup State //
 /////////////////
-
-export let matches = [];
 export let blocks = {};
 let blockAdvancement = maxInitialStackHeight + 1;
-let previousFilledY = maxInitialStackHeight;
+export let previousFilledY = maxInitialStackHeight;
 let advanceSpeed = 0.002;
 
 function addBlock(block) {
@@ -83,69 +83,6 @@ function calculateGridSizes() {
 Resized.Subscribe(calculateGridSizes);
 calculateGridSizes();
 
-////////////////////
-// Handle Matches //
-////////////////////
-
-function findMatches() {
-  let matches = [];
-  let currentMatch = [];
-  let currentBlockType = null;
-  function breakMatch(nextBlock) {
-    if (currentMatch.length >= 3) {
-      matches.push(currentMatch);
-    }
-    if (nextBlock) {
-      currentMatch = [nextBlock];
-      currentBlockType = nextBlock.type;
-    } else {
-      currentMatch = [];
-      currentBlockType = null;
-    }
-  }
-
-  function processBlock(block) {
-    if (block && (block.state !== state.WAITING && block.state !== state.DRAGGING)) {
-      breakMatch();
-      return;
-    }
-
-    if (currentBlockType == null && block) {
-      currentBlockType = block.type;
-      currentMatch.push(block);
-      return;
-    }
-
-    if (!block) {
-      breakMatch();
-      return;
-    }
-
-    if (block.type !== currentBlockType) {
-      breakMatch(block);
-    } else {
-      currentMatch.push(block);
-    }
-  }
-
-  for (let y = 1; y <= previousFilledY; y++) {
-    let row = blocks[y];
-    for (let x = 0; x < gridBlockDimensions.x; x++) {
-      processBlock(row[x]);
-    }
-    breakMatch();
-  }
-
-  for (let x = 0; x < gridBlockDimensions.x; x++) {
-    for (let y = 1; y <= previousFilledY; y++) {
-      processBlock(blocks[y][x]);
-    }
-    breakMatch();
-  }
-
-  return matches;
-}
-
 /////////////////////////
 // Intentional Advance //
 /////////////////////////
@@ -161,13 +98,11 @@ Update.Subscribe(() => {
     block.update();
   }
 
-  for (let match of findMatches()) {
-    for (let block of match) {
-      deleteBlock(block);
-    }
+  if (matches.size == 0) {
+    blockAdvancement += advanceSpeed;
+    advanceSpeed += advanceAcceleration;
   }
 
-  blockAdvancement += advanceSpeed;
   if (blockAdvancement - 1 > previousFilledY) {
     previousFilledY++;
     for (let x = 0; x < gridBlockDimensions.x; x++) {
