@@ -8,12 +8,6 @@ import { Vector, Color } from "./math";
 import vert from './shaders/vert.glsl';
 import frag from './shaders/frag.glsl';
 
-/////////////////////////////
-// Deal with parcel reload //
-/////////////////////////////
-import { refreshOnReload } from "./utils";
-refreshOnReload(module);
-
 ///////////////////////
 // Initialize Canvas //
 ///////////////////////
@@ -40,7 +34,7 @@ let textures;
 
 export async function loadTextures(texturePaths) {
   textures = await setupTextures(gl, texturePaths);
-  //document.body.appendChild(textures.canvas);
+  document.body.appendChild(textures.canvas);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
@@ -96,7 +90,6 @@ export function drawToScreen() {
     }
 
     if (spriteArrays[id].data.length < expectedLength) {
-      console.log(expectedLength);
       if (id == "indices") {
         spriteArrays[id].data = new Uint16Array(expectedLength);
       } else {

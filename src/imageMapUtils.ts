@@ -1,11 +1,5 @@
 import * as twgl from "twgl.js";
 
-/////////////////////////////
-// Deal with parcel reload //
-/////////////////////////////
-import { refreshOnReload } from "./utils";
-refreshOnReload(module);
-
 export interface TextureInfo {
   size: number;
   canvas: HTMLCanvasElement;
@@ -27,7 +21,7 @@ export function packTextures(images: {
   do {
     imageLayoutInfo = {};
     correctSize = true;
-    let gap = 10;
+    let gap = 5;
     size *= 2;
     let x = gap;
     let y = gap;
@@ -74,7 +68,7 @@ export async function setupTextures(
   texturePaths: string[]
 ) {
   let result = await loadTextures(texturePaths);
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true as any);
   let texture = twgl.createTexture(gl, {
     src: result.canvas
     // wrap: gl.CLAMP_TO_EDGE,

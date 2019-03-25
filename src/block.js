@@ -1,15 +1,10 @@
 import { Vector, Color } from "./math";
 import { image } from "./graphics";
 import { touchPosition, touchDown, touchStarted } from "./touch";
-import { blocks, gridCenter, gridDimensions, gridBlockDimensions, blockWidth, blockPixelAdvancement, intentionalAdvance } from "./grid";
+import { getBlock, setBlock, gridCenter, gridDimensions, gridBlockDimensions, blockWidth } from "./grid";
+import { intentionalAdvance, blockPixelAdvancement, previousFilledY } from "./advance";
 import { clearingTime } from "./match";
-import blockImages from "./images/*.png";
-
-/////////////////////////////
-// Deal with parcel reload //
-/////////////////////////////
-import { refreshOnReload } from "./utils";
-refreshOnReload(module);
+import { blockImages } from "./images";
 
 const pickingUpFrameLength = 5;
 const pickedUpScale = 1.2;
@@ -21,12 +16,12 @@ const fallSpeed = 0.3;
 const rotateSpeed = 0.3;
 
 export const type = {
-  CIRCLE: "Circle",
-  TRIANGLE_UP: "TriangleUp",
-  TRIANGLE_DOWN: "TriangleDown",
-  DIAMOND: "Diamond",
-  STAR: "Star",
-  HEART: "Heart",
+  STICK: "Stick",
+  SUN: "Sun",
+  CLOUD: "Cloud",
+  LEAF: "Leaf",
+  MOON: "Moon",
+  RAIN: "Rain",
   BANG: "Bang"
 };
 
@@ -40,6 +35,12 @@ export const state = {
   CLEARED: "Cleared"
 };
 
+export const volatileStates = [
+  state.MATCHED,
+  state.CLEARING,
+  state.CLEARED
+];
+
 export let heldBlock = null;
 
 function randomType() {
@@ -48,7 +49,7 @@ function randomType() {
 }
 
 export function deleteBlock(block) {
-  blocks[block.gridSlot.y][block.gridSlot.x] = null;
+  setBlock(block.gridSlot);
   dropBlock(block);
 }
 
@@ -148,7 +149,7 @@ export class Block {
 
         // Handle Boundaries
         if (this.gridSlot.x > 0) {
-          let leftBlock = blocks[this.gridSlot.y][this.gridSlot.x - 1];
+          let leftBlock = getBlock(this.gridSlot.withX(this.gridSlot.x - 1));
           if (leftBlock && leftBlock.state !== state.WAITING) {
             if (this.gridPosition.x < this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
@@ -157,7 +158,7 @@ export class Block {
         }
 
         if (this.gridSlot.x < 5) {
-          let rightBlock = blocks[this.gridSlot.y][this.gridSlot.x + 1];
+          let rightBlock = getBlock(this.gridSlot.withX(this.gridSlot.x + 1));
           if (rightBlock && rightBlock.state !== state.WAITING) {
             if (this.gridPosition.x > this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
@@ -171,12 +172,14 @@ export class Block {
         this.gridSlot.x = Math.round(this.gridPosition.x);
 
         if (previousSlotX !== this.gridSlot.x) {
-          let blockInTheWay = blocks[this.gridSlot.y][this.gridSlot.x];
-          blocks[this.gridSlot.y][this.gridSlot.x] = this;
-          blocks[this.gridSlot.y][previousSlotX] = blockInTheWay;
+          let blockInTheWay = getBlock(this.gridSlot);
+          setBlock(this);
 
           if (blockInTheWay) {
             blockInTheWay.gridSlot.x = previousSlotX;
+            setBlock(blockInTheWay);
+          } else {
+            setBlock(this.gridSlot.withX(previousSlotX));
           }
         }
       }
@@ -200,22 +203,22 @@ export class Block {
       return;
     }
 
-    if (!blocks[this.gridSlot.y + 1][this.gridSlot.x]) {
+    if (!getBlock(this.gridSlot.withY(this.gridSlot.y + 1))) {
       this.state = state.FALLING;
       if (heldBlock === this) heldBlock = null;
     }
 
     if (this.state === state.FALLING) {
       this.gridPosition.y += fallSpeed;
-      if (this.gridPosition.y > this.gridSlot.y && blocks[this.gridSlot.y + 1][this.gridSlot.x]) {
+      if (this.gridPosition.y > this.gridSlot.y && getBlock(this.gridSlot.withY(this.gridSlot.y + 1))) {
         this.gridPosition.y = this.gridSlot.y;
         this.state = state.WAITING;
       } else {
         let previousSlot = this.gridSlot.clone();
         this.gridSlot.y = Math.ceil(this.gridPosition.y);
         if (!previousSlot.equals(this.gridSlot)) {
-          blocks[previousSlot.y][previousSlot.x] = null;
-          blocks[this.gridSlot.y][this.gridSlot.x] = this;
+          setBlock(previousSlot);
+          setBlock(this);
         }
       }
     }

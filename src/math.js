@@ -1,9 +1,3 @@
-/////////////////////////////
-// Deal with parcel reload //
-/////////////////////////////
-import { refreshOnReload } from "./utils";
-refreshOnReload(module);
-
 export class Vector {
   constructor(x, y, z = 0) {
     this.x = x;

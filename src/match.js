@@ -1,18 +1,18 @@
 import { Update } from "./events";
 import { state, dropBlock, deleteBlock } from "./block";
-import { previousFilledY, blocks, gridBlockDimensions } from "./grid";
-
-/////////////////////////////
-// Deal with parcel reload //
-/////////////////////////////
-import { refreshOnReload } from "./utils";
-refreshOnReload(module);
+import { getBlock, setBlock, gridBlockDimensions } from "./grid";
+import { previousFilledY } from "./advance";
+import { Vector } from "./math";
+import { EventManager1 } from "./eventManager";
 
 export const clearDelay = 15;
 export const clearingTime = 15;
 export const continueClearTime = 5;
 
 export const matches = new Set();
+
+export const MatchStarted = new EventManager1();
+export const MatchCompleted = new EventManager1();
 
 class Match {
   constructor(matchBlocks) {
@@ -45,6 +45,7 @@ class Match {
       }
 
       if (!anyClearing) {
+        MatchCompleted.Publish(Array.from(this.blocks));
         for (let block of this.blocks) {
           deleteBlock(block);
         }
@@ -56,7 +57,7 @@ class Match {
   }
 }
 
-function findNewMatches() {
+export function findNewMatches() {
   let matchBlocks = new Set();
   let currentMatch = [];
   let currentBlockType = null;
@@ -77,7 +78,7 @@ function findNewMatches() {
   }
 
   function processBlock(block) {
-    if (block && (block.state !== state.WAITING && block.state !== state.DRAGGING)) {
+    if (!block || (block.state !== state.WAITING && block.state !== state.DRAGGING)) {
       breakMatch();
       return;
     }
@@ -101,25 +102,22 @@ function findNewMatches() {
   }
 
   for (let y = 1; y <= previousFilledY; y++) {
-    let row = blocks[y];
-    if (!row) continue;
     for (let x = 0; x < gridBlockDimensions.x; x++) {
-      processBlock(row[x]);
+      processBlock(getBlock(new Vector(x, y)));
     }
     breakMatch();
   }
 
   for (let x = 0; x < gridBlockDimensions.x; x++) {
     for (let y = 1; y <= previousFilledY; y++) {
-      let row = blocks[y];
-      if (!row) continue;
-      processBlock(row[x]);
+      processBlock(getBlock(new Vector(x, y)));
     }
     breakMatch();
   }
 
   if (matchBlocks.size != 0) {
     matches.add(new Match(matchBlocks));
+    MatchStarted.Publish(Array.from(matchBlocks));
   }
 }
 
