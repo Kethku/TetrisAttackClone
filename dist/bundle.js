@@ -21554,6 +21554,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./match */ "./src/match.js");
 /* harmony import */ var _block__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./block */ "./src/block.js");
 /* harmony import */ var _math__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./math */ "./src/math.js");
+/* harmony import */ var _garbage__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./garbage */ "./src/garbage.js");
+
 
 
 
@@ -21594,7 +21596,7 @@ function intentionalAdvance() {
 }
 
 _events__WEBPACK_IMPORTED_MODULE_0__["Update"].Subscribe(() => {
-  if (_match__WEBPACK_IMPORTED_MODULE_3__["matches"].size == 0 && _stopClock__WEBPACK_IMPORTED_MODULE_1__["stopClock"] == 0) {
+  if (_match__WEBPACK_IMPORTED_MODULE_3__["matches"].size == 0 && _stopClock__WEBPACK_IMPORTED_MODULE_1__["stopClock"] == 0 && !Object(_garbage__WEBPACK_IMPORTED_MODULE_6__["anyGarbageBreaking"])()) {
     blockAdvancement += advanceSpeed;
     blockPixelAdvancement = blockAdvancement * _grid__WEBPACK_IMPORTED_MODULE_2__["blockWidth"];
     advanceSpeed += advanceAcceleration;
@@ -21609,12 +21611,14 @@ _events__WEBPACK_IMPORTED_MODULE_0__["Update"].Subscribe(() => {
 /*!**********************!*\
   !*** ./src/block.js ***!
   \**********************/
-/*! exports provided: type, state, volatileStates, heldBlock, deleteBlock, dropBlock, Block */
+/*! exports provided: fallSpeed, type, standardBlocks, state, volatileStates, heldBlock, deleteBlock, dropBlock, Block */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "fallSpeed", function() { return fallSpeed; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "type", function() { return type; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "standardBlocks", function() { return standardBlocks; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "state", function() { return state; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "volatileStates", function() { return volatileStates; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "heldBlock", function() { return heldBlock; });
@@ -21642,8 +21646,9 @@ const maxDragVelocity = 0.9;
 const scaleVelocity = 0.08;
 const settleVelocity = 0.7;
 const swapFrameLength = 30;
-const fallSpeed = 0.3;
 const rotateSpeed = 0.3;
+
+const fallSpeed = 0.3;
 
 const type = {
   STICK: "Stick",
@@ -21652,8 +21657,18 @@ const type = {
   LEAF: "Leaf",
   MOON: "Moon",
   RAIN: "Rain",
-  BANG: "Bang"
+  BANG: "Bang",
+  GARBAGE: "Garbage"
 };
+
+const standardBlocks = [
+  type.STICK,
+  type.SUN,
+  type.CLOUD,
+  type.LEAF,
+  type.MOON,
+  type.RAIN
+];
 
 const state = {
   WAITING: "Waiting",
@@ -21662,7 +21677,7 @@ const state = {
   FALLING: "Falling",
   MATCHED: "Matched",
   CLEARING: "Clearing",
-  CLEARED: "Cleared"
+  CLEARED: "Cleared",
 };
 
 const volatileStates = [
@@ -21674,12 +21689,11 @@ const volatileStates = [
 let heldBlock = null;
 
 function randomType() {
-  let keys = Object.keys(type);
-  return type[keys[Math.floor(Math.random() * keys.length)]];
+  return standardBlocks[Math.floor(Math.random() * standardBlocks.length)];
 }
 
 function deleteBlock(block) {
-  Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(block.gridSlot);
+  Object(_grid__WEBPACK_IMPORTED_MODULE_3__["clearSlot"])(block.gridSlot);
   dropBlock(block);
 }
 
@@ -21694,6 +21708,10 @@ class Block {
     this.gridPosition = gridSlot.clone();
     this.state = state.SPAWNING;
     this.scale = 1;
+  }
+
+  overlappingSlots() {
+    return [ this.gridSlot ];
   }
 
   calculateLocation() {
@@ -21780,7 +21798,7 @@ class Block {
         // Handle Boundaries
         if (this.gridSlot.x > 0) {
           let leftBlock = Object(_grid__WEBPACK_IMPORTED_MODULE_3__["getBlock"])(this.gridSlot.withX(this.gridSlot.x - 1));
-          if (leftBlock && leftBlock.state !== state.WAITING) {
+          if (leftBlock && (leftBlock.state !== state.WAITING || leftBlock.type === type.GARBAGE)) {
             if (this.gridPosition.x < this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
             }
@@ -21789,7 +21807,7 @@ class Block {
 
         if (this.gridSlot.x < 5) {
           let rightBlock = Object(_grid__WEBPACK_IMPORTED_MODULE_3__["getBlock"])(this.gridSlot.withX(this.gridSlot.x + 1));
-          if (rightBlock && rightBlock.state !== state.WAITING) {
+          if (rightBlock && (rightBlock.state !== state.WAITING || rightBlock.type === type.GARBAGE)) {
             if (this.gridPosition.x > this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
             }
@@ -21809,7 +21827,7 @@ class Block {
             blockInTheWay.gridSlot.x = previousSlotX;
             Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(blockInTheWay);
           } else {
-            Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(this.gridSlot.withX(previousSlotX));
+            Object(_grid__WEBPACK_IMPORTED_MODULE_3__["clearSlot"])(this.gridSlot.withX(previousSlotX));
           }
         }
       }
@@ -21825,7 +21843,7 @@ class Block {
     }
   }
 
-  handleFalling(center, dimensions) {
+  handleFalling() {
     if (this.state === state.SPAWNING ||
         this.state === state.MATCHED ||
         this.state === state.CLEARING ||
@@ -21847,7 +21865,7 @@ class Block {
         let previousSlot = this.gridSlot.clone();
         this.gridSlot.y = Math.ceil(this.gridPosition.y);
         if (!previousSlot.equals(this.gridSlot)) {
-          Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(previousSlot);
+          Object(_grid__WEBPACK_IMPORTED_MODULE_3__["clearSlot"])(previousSlot);
           Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(this);
         }
       }
@@ -21870,7 +21888,7 @@ class Block {
     let { center, dimensions } = this.calculateLocation();
 
     this.handleDragging(center, dimensions);
-    this.handleFalling(center, dimensions);
+    this.handleFalling();
     this.animateBlockSize();
     this.handleClearAnimation();
 
@@ -21879,7 +21897,7 @@ class Block {
     }
   }
 
-  render() {
+  render(texture) {
     let { center, dimensions } = this.calculateLocation();
 
     let tint = this.calculateColor(center.y);
@@ -21888,7 +21906,12 @@ class Block {
     }
     dimensions = dimensions.multiply(this.scale);
 
-    Object(_graphics__WEBPACK_IMPORTED_MODULE_1__["image"])(_images__WEBPACK_IMPORTED_MODULE_6__["blockImages"][this.type], center, dimensions, 0, tint, _math__WEBPACK_IMPORTED_MODULE_0__["Vector"].center);
+    Object(_graphics__WEBPACK_IMPORTED_MODULE_1__["image"])({
+      imageUrl: texture || _images__WEBPACK_IMPORTED_MODULE_6__["blockImages"][this.type],
+      position: center,
+      dimensions,
+      tint
+    });
   }
 }
 
@@ -21913,7 +21936,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./match */ "./src/match.js");
 /* harmony import */ var _events__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./events */ "./src/events.js");
 /* harmony import */ var _advance__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./advance */ "./src/advance.js");
-/* harmony import */ var _eventManager__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./eventManager */ "./src/eventManager.ts");
+/* harmony import */ var _garbage__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./garbage */ "./src/garbage.js");
+/* harmony import */ var _eventManager__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./eventManager */ "./src/eventManager.ts");
+
 
 
 
@@ -21924,8 +21949,8 @@ __webpack_require__.r(__webpack_exports__);
 
 const combos = new Set();
 
-const ComboExtended = new _eventManager__WEBPACK_IMPORTED_MODULE_5__["EventManager1"]();
-const ComboFinished = new _eventManager__WEBPACK_IMPORTED_MODULE_5__["EventManager1"]();
+const ComboExtended = new _eventManager__WEBPACK_IMPORTED_MODULE_6__["EventManager1"]();
+const ComboFinished = new _eventManager__WEBPACK_IMPORTED_MODULE_6__["EventManager1"]();
 
 function emptySlotBelow(block) {
   for (let y = block.gridSlot.y + 1; y <= _advance__WEBPACK_IMPORTED_MODULE_4__["previousFilledY"]; y++) {
@@ -21962,7 +21987,8 @@ class Combo {
       if (trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].FALLING &&
           trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].MATCHED &&
           trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].CLEARING &&
-          !emptySlotBelow(trackedBlock)) {
+          (trackedBlock.type === _block__WEBPACK_IMPORTED_MODULE_1__["type"].GARBAGE ||
+           !emptySlotBelow(trackedBlock))) {
         this.trackedBlocks.delete(trackedBlock);
       }
     }
@@ -22001,8 +22027,20 @@ _match__WEBPACK_IMPORTED_MODULE_2__["MatchCompleted"].Subscribe(clearedBlocks =>
   }
 });
 
+_garbage__WEBPACK_IMPORTED_MODULE_5__["GarbageBroken"].Subscribe(({ matchedBlocks, spawnedBlocks }) => {
+  for (let combo of combos) {
+    for (let block of matchedBlocks) {
+      if (combo.trackedBlocks.has(block)) {
+        for (let spawnedBlock of spawnedBlocks) {
+          combo.trackedBlocks.add(spawnedBlock);
+        }
+        break;
+      }
+    }
+  }
+});
+
 function update() {
-  Object(_match__WEBPACK_IMPORTED_MODULE_2__["findNewMatches"])();
   let combosToRemove = [];
   for (let combo of combos) {
     if (combo.update()) combosToRemove.push(combo);
@@ -22015,7 +22053,6 @@ _events__WEBPACK_IMPORTED_MODULE_3__["Update"].Subscribe(update);
 
 ComboFinished.Subscribe(cascades => console.log((cascades + 1) + " Match Combo!"));
 ComboExtended.Subscribe((_, cascades) => console.log("Combo Extended!"));
-
 
 
 /***/ }),
@@ -22319,6 +22356,308 @@ const Update = new _eventManager__WEBPACK_IMPORTED_MODULE_0__["EventManager1"]()
 
 /***/ }),
 
+/***/ "./src/garbage.js":
+/*!************************!*\
+  !*** ./src/garbage.js ***!
+  \************************/
+/*! exports provided: garbageBlocks, GarbageBroken, Garbage, anyGarbageBreaking */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "garbageBlocks", function() { return garbageBlocks; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "GarbageBroken", function() { return GarbageBroken; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Garbage", function() { return Garbage; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "anyGarbageBreaking", function() { return anyGarbageBreaking; });
+/* harmony import */ var _events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./events */ "./src/events.js");
+/* harmony import */ var _images__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./images */ "./src/images.js");
+/* harmony import */ var _block__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./block */ "./src/block.js");
+/* harmony import */ var _grid__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./grid */ "./src/grid.js");
+/* harmony import */ var _advance__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./advance */ "./src/advance.js");
+/* harmony import */ var _graphics__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./graphics */ "./src/graphics.js");
+/* harmony import */ var _math__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./math */ "./src/math.js");
+/* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./match */ "./src/match.js");
+/* harmony import */ var _eventManager__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./eventManager */ "./src/eventManager.ts");
+
+
+
+
+
+
+
+
+
+
+const clearDelay = 60;
+const blockClearDelay = 10;
+const breakDelay = 30;
+
+const garbageBlocks = new Set();
+
+const GarbageBroken = new _eventManager__WEBPACK_IMPORTED_MODULE_8__["EventManager1"]();
+
+function singleRowGarbageTexture(width) {
+  switch (width) {
+  case 3:
+    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].ThreeWide;
+  case 4:
+    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].FourWide;
+  case 5:
+    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].FiveWide;
+  case 6:
+    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].SingleLine;
+  default:
+    throw "Invalid single high block.";
+  }
+}
+
+function* multiRowGarbageTexture(height) {
+  if (height == 1) yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].SingleLine;
+  else if (height == 2) yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].TwoLine;
+  else {
+    let middleBlockHeight = 2 - (height % 2);
+    let remainingMiddles = height - 2 - middleBlockHeight;
+    yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].TopLine;
+    for (let i = 0; i < remainingMiddles / 2; i++) {
+      yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].MiddleLineNoExclamationPoint;
+    }
+    yield height % 2 == 0
+      ? _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].EvenMiddleLine
+      : _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].MiddleLine;
+    for (let i = 0; i < remainingMiddles / 2; i++) {
+      yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].MiddleLineNoExclamationPoint;
+    }
+    yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].BottomLine;
+  }
+}
+
+function garbageTextureHeight(texture) {
+  if (texture === _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].EvenMiddleLine ||
+      texture === _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].TwoLine) {
+    return _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"] * 2;
+  } else {
+    return _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"];
+  }
+}
+
+function garbageRenderInfo(blockDimensions) {
+  if (blockDimensions.y != 1 && blockDimensions.x != 6) {
+    throw "Invalid Garbage Size";
+  }
+
+  if (blockDimensions.y == 1) {
+    return [
+      {
+        texture: singleRowGarbageTexture(blockDimensions.width),
+        dimensions: new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](blockDimensions.width * _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"], _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"])
+      }
+    ];
+  }
+
+  let textures = multiRowGarbageTexture(blockDimensions.height);
+  return Array.from(textures).map(texture => {
+    return {
+      texture,
+      dimensions: new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6 * _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"], garbageTextureHeight(texture))
+    };
+  });
+}
+
+class Garbage {
+  constructor(left, gridDimensions) {
+    this.gridSlot = new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](left, _advance__WEBPACK_IMPORTED_MODULE_4__["previousFilledY"] - _grid__WEBPACK_IMPORTED_MODULE_3__["gridBlockDimensions"].height - gridDimensions.height);
+    this.gridPosition = this.gridSlot.clone();
+    this.gridDimensions = gridDimensions;
+    this.type = _block__WEBPACK_IMPORTED_MODULE_2__["type"].GARBAGE;
+    this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].FALLING;
+    garbageBlocks.add(this);
+  }
+
+  * overlappingSlots() {
+    for (let y = this.gridSlot.y + this.gridDimensions.height - 1; y >= this.gridSlot.y; y--) {
+      for (let x = this.gridSlot.x; x < this.gridSlot.x + this.gridDimensions.width; x++) {
+        yield new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](x, y);
+      }
+    }
+  }
+
+  gapBelow() {
+    let gapBelow = true;
+    for (let x = this.gridSlot.x; x < this.gridSlot.x + this.gridDimensions.x; x++) {
+      if (Object(_grid__WEBPACK_IMPORTED_MODULE_3__["getBlock"])(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](x, this.gridSlot.y + this.gridDimensions.height))) {
+        gapBelow = false;
+        break;
+      }
+    }
+    return gapBelow;
+  }
+
+  adjacentTo(slot) {
+    for (let overlappingSlot of this.overlappingSlots()) {
+      if ((Math.abs(slot.x - overlappingSlot.x) == 1 &&
+           slot.y - overlappingSlot.y == 0) ||
+          (Math.abs(slot.y - overlappingSlot.y) == 1 &&
+           slot.x - overlappingSlot.x == 0)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  handleFalling() {
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) return;
+
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].WAITING && this.gapBelow()) {
+      this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].FALLING;
+    }
+
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].FALLING) {
+      this.gridPosition.y += _block__WEBPACK_IMPORTED_MODULE_2__["fallSpeed"];
+      if (this.gridPosition.y > this.gridSlot.y && !this.gapBelow()) {
+        this.gridPosition.y = this.gridSlot.y;
+        this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].WAITING;
+      } else {
+        let previousSlot = this.gridSlot.clone();
+        let newY = Math.ceil(this.gridPosition.y);
+        if (newY != this.gridSlot.y) {
+          for (let slot of this.overlappingSlots()) {
+            Object(_grid__WEBPACK_IMPORTED_MODULE_3__["clearSlot"])(slot);
+          }
+          this.gridSlot.y = newY;
+          Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(this);
+        }
+      }
+    }
+  }
+
+  break() {
+    this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING;
+    this.timer = 0;
+    this.spawnedBlocks = [];
+
+    for (let slot of this.overlappingSlots()) {
+      this.spawnedBlocks.push({
+        visible: false,
+        block: new _block__WEBPACK_IMPORTED_MODULE_2__["Block"](slot)
+      });
+    }
+  }
+
+  handleBreaking() {
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) {
+      if (this.timer > clearDelay) {
+        if ((this.timer - clearDelay) % blockClearDelay == 0) {
+          let anyHidden = false;
+          for (let spawnedBlock of this.spawnedBlocks) {
+            if (!spawnedBlock.visible) {
+              spawnedBlock.visible = true;
+              anyHidden = true;
+              break;
+            }
+          }
+
+          if (!anyHidden && !this.breakTimeStarted) {
+            this.breakTimeStarted = this.timer;
+          }
+        }
+      }
+
+      if (this.breakTimeStarted &&
+          this.timer - this.breakTimeStarted > breakDelay) {
+        garbageBlocks.delete(this);
+        for (let spawnedBlock of this.spawnedBlocks) {
+          Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(spawnedBlock.block);
+          spawnedBlock.block.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].WAITING;
+        }
+      }
+
+      this.timer++;
+    }
+  }
+
+  renderGarbage(topLeft) {
+    let renderInfos = garbageRenderInfo(this.gridDimensions);
+    for (let renderInfo of renderInfos) {
+      Object(_graphics__WEBPACK_IMPORTED_MODULE_5__["image"])({
+        imageUrl: renderInfo.texture,
+        position: topLeft,
+        dimensions: renderInfo.dimensions,
+        center: _math__WEBPACK_IMPORTED_MODULE_6__["Vector"].topLeft
+      });
+      topLeft = topLeft.add(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](0, -renderInfo.dimensions.height));
+    }
+  }
+
+  renderBreaking(topLeft) {
+    for (let spawnedBlock of this.spawnedBlocks) {
+      if (!spawnedBlock.visible) {
+        spawnedBlock.block.render(_images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].Clear);
+      } else {
+        spawnedBlock.block.render();
+      }
+    }
+  }
+
+  update() {
+    this.handleFalling();
+    this.handleBreaking();
+  }
+
+  render() {
+    let blocksTopLeft = new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](
+      _grid__WEBPACK_IMPORTED_MODULE_3__["gridCenter"].x - _grid__WEBPACK_IMPORTED_MODULE_3__["gridDimensions"].width / 2,
+      _grid__WEBPACK_IMPORTED_MODULE_3__["gridCenter"].y - _grid__WEBPACK_IMPORTED_MODULE_3__["gridDimensions"].height / 2 + _advance__WEBPACK_IMPORTED_MODULE_4__["blockPixelAdvancement"]);
+    let topLeft = blocksTopLeft.add(this.gridPosition.multiply(_grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"]).multiplyParts(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](1, -1))).withZ(2);
+
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) {
+      this.renderBreaking(topLeft);
+    } else {
+      this.renderGarbage(topLeft);
+    }
+  }
+}
+
+_match__WEBPACK_IMPORTED_MODULE_7__["MatchStarted"].Subscribe(matchedBlocks => {
+  for (let garbage of garbageBlocks) {
+    if (garbage.state == _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) continue;
+    for (let matchedBlock of matchedBlocks) {
+      if (garbage.adjacentTo(matchedBlock.gridSlot)) {
+        garbage.break();
+        GarbageBroken.Publish({
+          matchedBlocks,
+          spawnedBlocks: garbage.spawnedBlocks
+        });
+        break;
+      }
+    }
+  }
+});
+
+function anyGarbageBreaking() {
+  for (let garbage of garbageBlocks) {
+    if (garbage.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) return true;
+  }
+  return false;
+}
+
+
+_events__WEBPACK_IMPORTED_MODULE_0__["Setup"].Subscribe(() => {
+  Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(new Garbage(0, new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6, 3)));
+});
+
+_events__WEBPACK_IMPORTED_MODULE_0__["Update"].Subscribe(() => {
+  if (Math.random() < 0.002) {
+    Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(new Garbage(0, new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6, Math.floor(Math.pow(Math.random(), 3) * 3))));
+  }
+
+  if (Math.random() < 0.002) {
+    Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(new Garbage(Math.floor(Math.random() * 3), new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](Math.floor(Math.random() * 3) + 3, 1)));
+  }
+});
+
+
+/***/ }),
+
 /***/ "./src/graphics.js":
 /*!*************************!*\
   !*** ./src/graphics.js ***!
@@ -22407,8 +22746,8 @@ resize();
 // Draw APIs //
 ///////////////
 let imagesToDraw = [];
-function image(imageUrl, position, dimensions, rotation = 0, color = _math__WEBPACK_IMPORTED_MODULE_4__["Color"].white, center = _math__WEBPACK_IMPORTED_MODULE_4__["Vector"].half) {
-  imagesToDraw.push({ imageUrl, position, dimensions, rotation, color, center });
+function image({ imageUrl, position, dimensions, rotation = 0, tint = _math__WEBPACK_IMPORTED_MODULE_4__["Color"].white, center = _math__WEBPACK_IMPORTED_MODULE_4__["Vector"].half }) {
+  imagesToDraw.push({ imageUrl, position, dimensions, rotation, tint, center });
 }
 
 ////////////////
@@ -22462,7 +22801,7 @@ function drawToScreen() {
       imageToDraw.center.y
     ]);
     Object(_utils__WEBPACK_IMPORTED_MODULE_2__["spliceData"])(spriteArrays.a_scale, index, [1]);
-    Object(_utils__WEBPACK_IMPORTED_MODULE_2__["spliceData"])(spriteArrays.a_color, index, [imageToDraw.color.r, imageToDraw.color.g, imageToDraw.color.b, imageToDraw.color.a]);
+    Object(_utils__WEBPACK_IMPORTED_MODULE_2__["spliceData"])(spriteArrays.a_color, index, [imageToDraw.tint.r, imageToDraw.tint.g, imageToDraw.tint.b, imageToDraw.tint.a]);
     let offset = index * 4;
     Object(_utils__WEBPACK_IMPORTED_MODULE_2__["spliceArray"])(spriteArrays.indices.data, index * 6,
                 [offset + 0, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3]);
@@ -22492,7 +22831,7 @@ function drawToScreen() {
 /*!*********************!*\
   !*** ./src/grid.js ***!
   \*********************/
-/*! exports provided: gridBlockDimensions, getBlock, setBlock, allBlocks, gridCenter, gridDimensions, blockWidth */
+/*! exports provided: gridBlockDimensions, getBlock, setBlock, clearSlot, allBlocks, gridCenter, gridDimensions, blockWidth */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -22500,6 +22839,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "gridBlockDimensions", function() { return gridBlockDimensions; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getBlock", function() { return getBlock; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setBlock", function() { return setBlock; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "clearSlot", function() { return clearSlot; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "allBlocks", function() { return allBlocks; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "gridCenter", function() { return gridCenter; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "gridDimensions", function() { return gridDimensions; });
@@ -22533,27 +22873,36 @@ function getBlock(gridSlot) {
   return undefined;
 }
 
-function setBlock(arg) {
-  if (arg.type) {
-    if (!blocks[arg.gridSlot.y]) {
-      blocks[arg.gridSlot.y] = [];
+function setBlock(block) {
+  let topLeft = block.gridSlot;
+
+  for (let overlappingSlot of block.overlappingSlots()) {
+    if (!blocks[overlappingSlot.y]) {
+      blocks[overlappingSlot.y] = [];
     }
-    blocks[arg.gridSlot.y][arg.gridSlot.x] = arg;
+    blocks[overlappingSlot.y][overlappingSlot.x] = block;
   }
-  else {
-    if (blocks[arg.y]) {
-      delete blocks[arg.y][arg.x];
-    }
+}
+
+function clearSlot(position) {
+  if (blocks[position.y]) {
+    delete blocks[position.y][position.x];
   }
 }
 
 function* allBlocks() {
-  for (let y in blocks) {
+  let seenBlocks = new Set();
+
+  let rowYValues = Object.keys(blocks);
+  let topRow = Math.min(...rowYValues);
+  let bottomRow = Math.max(...rowYValues);
+  for (let y = bottomRow + 1; y >= topRow; y--) {
     let row = blocks[y];
     if (row) {
       for (let block of row) {
-        if (block) {
+        if (block && !seenBlocks.has(block)) {
           yield block;
+          seenBlocks.add(block);
         }
       }
     }
@@ -22596,8 +22945,16 @@ _events__WEBPACK_IMPORTED_MODULE_1__["Update"].Subscribe(() => {
   }
 });
 
+let background = _block__WEBPACK_IMPORTED_MODULE_3__["standardBlocks"][Math.floor(Math.random() * _block__WEBPACK_IMPORTED_MODULE_3__["standardBlocks"].length)];
+
 _events__WEBPACK_IMPORTED_MODULE_1__["Draw"].Subscribe(() => {
-  Object(_graphics__WEBPACK_IMPORTED_MODULE_2__["image"])(_images__WEBPACK_IMPORTED_MODULE_5__["blockImages"][_block__WEBPACK_IMPORTED_MODULE_3__["type"].BANG], gridCenter, gridDimensions, 0, new _math__WEBPACK_IMPORTED_MODULE_0__["Color"](0.5, 0.5, 0.5, 0.5));
+  Object(_graphics__WEBPACK_IMPORTED_MODULE_2__["image"])({
+    imageUrl: _images__WEBPACK_IMPORTED_MODULE_5__["blockImages"][background],
+    position: gridCenter,
+    dimensions: gridDimensions,
+    tint: new _math__WEBPACK_IMPORTED_MODULE_0__["Color"](0.5, 0.5, 0.5, 0.5)
+  });
+
   for (let block of allBlocks()) {
     block.render();
   }
@@ -22641,13 +22998,22 @@ function packTextures(images) {
     do {
         imageLayoutInfo = {};
         correctSize = true;
-        let gap = 5;
+        let gap = 2;
         size *= 2;
         let x = gap;
         let y = gap;
         let rowHeight = imageArray[0].image.height;
         for (let imageData of imageArray) {
             let image = imageData.image;
+            if (x + image.width > size) {
+                x = gap;
+                y += rowHeight + gap;
+                if (y + image.height + gap > size) {
+                    correctSize = false;
+                    break;
+                }
+                rowHeight = image.height + gap;
+            }
             imageLayoutInfo[imageData.id] = [
                 x,
                 y,
@@ -22659,15 +23025,6 @@ function packTextures(images) {
                 y + image.height
             ];
             x += image.width + gap;
-            if (x > size) {
-                x = gap;
-                y += rowHeight + gap;
-                if (y + image.height + gap > size) {
-                    correctSize = false;
-                    break;
-                }
-                rowHeight = image.height + gap;
-            }
         }
     } while (!correctSize);
     let canvas = document.createElement("canvas");
@@ -22721,12 +23078,14 @@ function loadTextures(texturePaths) {
 /*!***********************!*\
   !*** ./src/images.js ***!
   \***********************/
-/*! exports provided: blockImages */
+/*! exports provided: blockImages, garbageImages, imageURLs */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "blockImages", function() { return blockImages; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "garbageImages", function() { return garbageImages; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "imageURLs", function() { return imageURLs; });
 const blockImages = {
   "Bang": "./images/Bang.png",
   "Stick": "./images/Stick.png",
@@ -22736,6 +23095,24 @@ const blockImages = {
   "Moon": "./images/Moon.png",
   "Rain": "./images/Rain.png"
 };
+
+const garbageImages = {
+  "ThreeWide": "./images/garbage/ThreeWideGarbage.png",
+  "FourWide": "./images/garbage/FourWideGarbage.png",
+  "FiveWide": "./images/garbage/FiveWideGarbage.png",
+  "SingleLine": "./images/garbage/SingleLineGarbage.png",
+  "TwoLine": "./images/garbage/TwoLineGarbage.png",
+
+  "TopLine": "./images/garbage/TopLineGarbage.png",
+  "MiddleLine": "./images/garbage/MiddleLineGarbage.png",
+  "EvenMiddleLine": "./images/garbage/EvenMiddleLineGarbage.png",
+  "MiddleLineNoExclamationPoint": "./images/garbage/MiddleLineGarbageNoExclamationPoint.png",
+  "BottomLine": "./images/garbage/BottomLineGarbage.png",
+
+  "Clear": "./images/garbage/Clear.png"
+};
+
+const imageURLs = Object.values(blockImages).concat(Object.values(garbageImages));
 
 
 /***/ }),
@@ -22759,6 +23136,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _advance__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./advance */ "./src/advance.js");
 /* harmony import */ var _combo__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./combo */ "./src/combo.js");
 /* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./match */ "./src/match.js");
+/* harmony import */ var _garbage__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./garbage */ "./src/garbage.js");
+
 
 
 
@@ -22781,7 +23160,7 @@ function loop() {
 }
 
 async function start()  {
-  await Object(_graphics__WEBPACK_IMPORTED_MODULE_2__["loadTextures"])(Object.values(_images__WEBPACK_IMPORTED_MODULE_3__["blockImages"]));
+  await Object(_graphics__WEBPACK_IMPORTED_MODULE_2__["loadTextures"])(_images__WEBPACK_IMPORTED_MODULE_3__["imageURLs"]);
   _events__WEBPACK_IMPORTED_MODULE_1__["Setup"].Publish();
   window.requestAnimationFrame(loop);
 }
@@ -22892,7 +23271,7 @@ function findNewMatches() {
   }
 
   function processBlock(block) {
-    if (!block || (block.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].WAITING && block.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].DRAGGING)) {
+    if (!block || (block.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].WAITING && block.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].DRAGGING) || block.type === _block__WEBPACK_IMPORTED_MODULE_1__["type"].GARBAGE) {
       breakMatch();
       return;
     }
@@ -22915,15 +23294,15 @@ function findNewMatches() {
     }
   }
 
-  for (let y = 1; y <= _advance__WEBPACK_IMPORTED_MODULE_3__["previousFilledY"]; y++) {
-    for (let x = 0; x < _grid__WEBPACK_IMPORTED_MODULE_2__["gridBlockDimensions"].x; x++) {
+  for (let y = -_grid__WEBPACK_IMPORTED_MODULE_2__["gridBlockDimensions"].height; y <= _advance__WEBPACK_IMPORTED_MODULE_3__["previousFilledY"]; y++) {
+    for (let x = 0; x < _grid__WEBPACK_IMPORTED_MODULE_2__["gridBlockDimensions"].width; x++) {
       processBlock(Object(_grid__WEBPACK_IMPORTED_MODULE_2__["getBlock"])(new _math__WEBPACK_IMPORTED_MODULE_4__["Vector"](x, y)));
     }
     breakMatch();
   }
 
   for (let x = 0; x < _grid__WEBPACK_IMPORTED_MODULE_2__["gridBlockDimensions"].x; x++) {
-    for (let y = 1; y <= _advance__WEBPACK_IMPORTED_MODULE_3__["previousFilledY"]; y++) {
+    for (let y = -_grid__WEBPACK_IMPORTED_MODULE_2__["gridBlockDimensions"].height; y <= _advance__WEBPACK_IMPORTED_MODULE_3__["previousFilledY"]; y++) {
       processBlock(Object(_grid__WEBPACK_IMPORTED_MODULE_2__["getBlock"])(new _math__WEBPACK_IMPORTED_MODULE_4__["Vector"](x, y)));
     }
     breakMatch();

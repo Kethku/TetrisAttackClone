@@ -1,8 +1,9 @@
 import { getBlock, gridBlockDimensions } from "./grid";
-import { state, volatileStates } from "./block";
+import { state, type, volatileStates } from "./block";
 import { MatchStarted, MatchCompleted, findNewMatches } from "./match";
 import { Update } from "./events";
 import { previousFilledY } from "./advance";
+import { GarbageBroken } from "./garbage";
 
 import { EventManager1, EventManager2 } from "./eventManager";
 
@@ -46,7 +47,8 @@ export class Combo {
       if (trackedBlock.state !== state.FALLING &&
           trackedBlock.state !== state.MATCHED &&
           trackedBlock.state !== state.CLEARING &&
-          !emptySlotBelow(trackedBlock)) {
+          (trackedBlock.type === type.GARBAGE ||
+           !emptySlotBelow(trackedBlock))) {
         this.trackedBlocks.delete(trackedBlock);
       }
     }
@@ -85,8 +87,20 @@ MatchCompleted.Subscribe(clearedBlocks => {
   }
 });
 
+GarbageBroken.Subscribe(({ matchedBlocks, spawnedBlocks }) => {
+  for (let combo of combos) {
+    for (let block of matchedBlocks) {
+      if (combo.trackedBlocks.has(block)) {
+        for (let spawnedBlock of spawnedBlocks) {
+          combo.trackedBlocks.add(spawnedBlock);
+        }
+        break;
+      }
+    }
+  }
+});
+
 function update() {
-  findNewMatches();
   let combosToRemove = [];
   for (let combo of combos) {
     if (combo.update()) combosToRemove.push(combo);
@@ -99,4 +113,3 @@ Update.Subscribe(update);
 
 ComboFinished.Subscribe(cascades => console.log((cascades + 1) + " Match Combo!"));
 ComboExtended.Subscribe((_, cascades) => console.log("Combo Extended!"));
-

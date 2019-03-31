@@ -1,6 +1,6 @@
 import { Update } from "./events";
-import { state, dropBlock, deleteBlock } from "./block";
-import { getBlock, setBlock, gridBlockDimensions } from "./grid";
+import { state, type, dropBlock, deleteBlock } from "./block";
+import { getBlock, gridBlockDimensions } from "./grid";
 import { previousFilledY } from "./advance";
 import { Vector } from "./math";
 import { EventManager1 } from "./eventManager";
@@ -78,7 +78,7 @@ export function findNewMatches() {
   }
 
   function processBlock(block) {
-    if (!block || (block.state !== state.WAITING && block.state !== state.DRAGGING)) {
+    if (!block || (block.state !== state.WAITING && block.state !== state.DRAGGING) || block.type === type.GARBAGE) {
       breakMatch();
       return;
     }
@@ -101,15 +101,15 @@ export function findNewMatches() {
     }
   }
 
-  for (let y = 1; y <= previousFilledY; y++) {
-    for (let x = 0; x < gridBlockDimensions.x; x++) {
+  for (let y = -gridBlockDimensions.height; y <= previousFilledY; y++) {
+    for (let x = 0; x < gridBlockDimensions.width; x++) {
       processBlock(getBlock(new Vector(x, y)));
     }
     breakMatch();
   }
 
   for (let x = 0; x < gridBlockDimensions.x; x++) {
-    for (let y = 1; y <= previousFilledY; y++) {
+    for (let y = -gridBlockDimensions.height; y <= previousFilledY; y++) {
       processBlock(getBlock(new Vector(x, y)));
     }
     breakMatch();

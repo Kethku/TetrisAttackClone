@@ -4,6 +4,7 @@ import { gridBlockDimensions, blockWidth, setBlock } from "./grid";
 import { matches } from "./match";
 import { Block } from "./block";
 import { Vector } from "./math";
+import { anyGarbageBreaking } from "./garbage";
 
 const maxInitialStackHeight = 5;
 const advanceAcceleration = 0.0000005;
@@ -38,7 +39,7 @@ export function intentionalAdvance() {
 }
 
 Update.Subscribe(() => {
-  if (matches.size == 0 && stopClock == 0) {
+  if (matches.size == 0 && stopClock == 0 && !anyGarbageBreaking()) {
     blockAdvancement += advanceSpeed;
     blockPixelAdvancement = blockAdvancement * blockWidth;
     advanceSpeed += advanceAcceleration;

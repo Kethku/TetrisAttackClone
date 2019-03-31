@@ -63,8 +63,8 @@ resize();
 // Draw APIs //
 ///////////////
 let imagesToDraw = [];
-export function image(imageUrl, position, dimensions, rotation = 0, color = Color.white, center = Vector.half) {
-  imagesToDraw.push({ imageUrl, position, dimensions, rotation, color, center });
+export function image({ imageUrl, position, dimensions, rotation = 0, tint = Color.white, center = Vector.half }) {
+  imagesToDraw.push({ imageUrl, position, dimensions, rotation, tint, center });
 }
 
 ////////////////
@@ -118,7 +118,7 @@ export function drawToScreen() {
       imageToDraw.center.y
     ]);
     spliceData(spriteArrays.a_scale, index, [1]);
-    spliceData(spriteArrays.a_color, index, [imageToDraw.color.r, imageToDraw.color.g, imageToDraw.color.b, imageToDraw.color.a]);
+    spliceData(spriteArrays.a_color, index, [imageToDraw.tint.r, imageToDraw.tint.g, imageToDraw.tint.b, imageToDraw.tint.a]);
     let offset = index * 4;
     spliceArray(spriteArrays.indices.data, index * 6,
                 [offset + 0, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3]);

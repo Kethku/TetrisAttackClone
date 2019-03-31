@@ -1,7 +1,7 @@
 import { Vector, Color } from "./math";
 import { Update, Draw } from "./events";
 import { image, screenSize, Resized } from "./graphics";
-import { deleteBlock, heldBlock, state, type, Block } from "./block";
+import { deleteBlock, heldBlock, state, type, Block, standardBlocks } from "./block";
 import { matches } from "./match";
 import { blockImages } from "./images";
 
@@ -21,27 +21,36 @@ export function getBlock(gridSlot) {
   return undefined;
 }
 
-export function setBlock(arg) {
-  if (arg.type) {
-    if (!blocks[arg.gridSlot.y]) {
-      blocks[arg.gridSlot.y] = [];
+export function setBlock(block) {
+  let topLeft = block.gridSlot;
+
+  for (let overlappingSlot of block.overlappingSlots()) {
+    if (!blocks[overlappingSlot.y]) {
+      blocks[overlappingSlot.y] = [];
     }
-    blocks[arg.gridSlot.y][arg.gridSlot.x] = arg;
+    blocks[overlappingSlot.y][overlappingSlot.x] = block;
   }
-  else {
-    if (blocks[arg.y]) {
-      delete blocks[arg.y][arg.x];
-    }
+}
+
+export function clearSlot(position) {
+  if (blocks[position.y]) {
+    delete blocks[position.y][position.x];
   }
 }
 
 export function* allBlocks() {
-  for (let y in blocks) {
+  let seenBlocks = new Set();
+
+  let rowYValues = Object.keys(blocks);
+  let topRow = Math.min(...rowYValues);
+  let bottomRow = Math.max(...rowYValues);
+  for (let y = bottomRow + 1; y >= topRow; y--) {
     let row = blocks[y];
     if (row) {
       for (let block of row) {
-        if (block) {
+        if (block && !seenBlocks.has(block)) {
           yield block;
+          seenBlocks.add(block);
         }
       }
     }
@@ -84,8 +93,16 @@ Update.Subscribe(() => {
   }
 });
 
+let background = standardBlocks[Math.floor(Math.random() * standardBlocks.length)];
+
 Draw.Subscribe(() => {
-  image(blockImages[type.BANG], gridCenter, gridDimensions, 0, new Color(0.5, 0.5, 0.5, 0.5));
+  image({
+    imageUrl: blockImages[background],
+    position: gridCenter,
+    dimensions: gridDimensions,
+    tint: new Color(0.5, 0.5, 0.5, 0.5)
+  });
+
   for (let block of allBlocks()) {
     block.render();
   }

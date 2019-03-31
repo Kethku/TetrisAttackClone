@@ -2,13 +2,14 @@ import "babel-polyfill";
 
 import { Setup, Update, Draw } from "./events";
 import { drawToScreen, loadTextures, width, height } from "./graphics";
-import { blockImages } from "./images";
+import { imageURLs } from "./images";
 
 import "./grid";
 import "./touch";
 import "./advance";
 import "./combo";
 import "./match";
+import "./garbage";
 
 let frames = 0;
 function loop() {
@@ -20,7 +21,7 @@ function loop() {
 }
 
 async function start()  {
-  await loadTextures(Object.values(blockImages));
+  await loadTextures(imageURLs);
   Setup.Publish();
   window.requestAnimationFrame(loop);
 }

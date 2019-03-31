@@ -1,7 +1,7 @@
 import { Vector, Color } from "./math";
 import { image } from "./graphics";
 import { touchPosition, touchDown, touchStarted } from "./touch";
-import { getBlock, setBlock, gridCenter, gridDimensions, gridBlockDimensions, blockWidth } from "./grid";
+import { getBlock, setBlock, clearSlot, gridCenter, gridDimensions, gridBlockDimensions, blockWidth } from "./grid";
 import { intentionalAdvance, blockPixelAdvancement, previousFilledY } from "./advance";
 import { clearingTime } from "./match";
 import { blockImages } from "./images";
@@ -12,8 +12,9 @@ const maxDragVelocity = 0.9;
 const scaleVelocity = 0.08;
 const settleVelocity = 0.7;
 const swapFrameLength = 30;
-const fallSpeed = 0.3;
 const rotateSpeed = 0.3;
+
+export const fallSpeed = 0.3;
 
 export const type = {
   STICK: "Stick",
@@ -22,8 +23,18 @@ export const type = {
   LEAF: "Leaf",
   MOON: "Moon",
   RAIN: "Rain",
-  BANG: "Bang"
+  BANG: "Bang",
+  GARBAGE: "Garbage"
 };
+
+export const standardBlocks = [
+  type.STICK,
+  type.SUN,
+  type.CLOUD,
+  type.LEAF,
+  type.MOON,
+  type.RAIN
+];
 
 export const state = {
   WAITING: "Waiting",
@@ -32,7 +43,7 @@ export const state = {
   FALLING: "Falling",
   MATCHED: "Matched",
   CLEARING: "Clearing",
-  CLEARED: "Cleared"
+  CLEARED: "Cleared",
 };
 
 export const volatileStates = [
@@ -44,12 +55,11 @@ export const volatileStates = [
 export let heldBlock = null;
 
 function randomType() {
-  let keys = Object.keys(type);
-  return type[keys[Math.floor(Math.random() * keys.length)]];
+  return standardBlocks[Math.floor(Math.random() * standardBlocks.length)];
 }
 
 export function deleteBlock(block) {
-  setBlock(block.gridSlot);
+  clearSlot(block.gridSlot);
   dropBlock(block);
 }
 
@@ -64,6 +74,10 @@ export class Block {
     this.gridPosition = gridSlot.clone();
     this.state = state.SPAWNING;
     this.scale = 1;
+  }
+
+  overlappingSlots() {
+    return [ this.gridSlot ];
   }
 
   calculateLocation() {
@@ -150,7 +164,7 @@ export class Block {
         // Handle Boundaries
         if (this.gridSlot.x > 0) {
           let leftBlock = getBlock(this.gridSlot.withX(this.gridSlot.x - 1));
-          if (leftBlock && leftBlock.state !== state.WAITING) {
+          if (leftBlock && (leftBlock.state !== state.WAITING || leftBlock.type === type.GARBAGE)) {
             if (this.gridPosition.x < this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
             }
@@ -159,7 +173,7 @@ export class Block {
 
         if (this.gridSlot.x < 5) {
           let rightBlock = getBlock(this.gridSlot.withX(this.gridSlot.x + 1));
-          if (rightBlock && rightBlock.state !== state.WAITING) {
+          if (rightBlock && (rightBlock.state !== state.WAITING || rightBlock.type === type.GARBAGE)) {
             if (this.gridPosition.x > this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
             }
@@ -179,7 +193,7 @@ export class Block {
             blockInTheWay.gridSlot.x = previousSlotX;
             setBlock(blockInTheWay);
           } else {
-            setBlock(this.gridSlot.withX(previousSlotX));
+            clearSlot(this.gridSlot.withX(previousSlotX));
           }
         }
       }
@@ -195,7 +209,7 @@ export class Block {
     }
   }
 
-  handleFalling(center, dimensions) {
+  handleFalling() {
     if (this.state === state.SPAWNING ||
         this.state === state.MATCHED ||
         this.state === state.CLEARING ||
@@ -217,7 +231,7 @@ export class Block {
         let previousSlot = this.gridSlot.clone();
         this.gridSlot.y = Math.ceil(this.gridPosition.y);
         if (!previousSlot.equals(this.gridSlot)) {
-          setBlock(previousSlot);
+          clearSlot(previousSlot);
           setBlock(this);
         }
       }
@@ -240,7 +254,7 @@ export class Block {
     let { center, dimensions } = this.calculateLocation();
 
     this.handleDragging(center, dimensions);
-    this.handleFalling(center, dimensions);
+    this.handleFalling();
     this.animateBlockSize();
     this.handleClearAnimation();
 
@@ -249,7 +263,7 @@ export class Block {
     }
   }
 
-  render() {
+  render(texture) {
     let { center, dimensions } = this.calculateLocation();
 
     let tint = this.calculateColor(center.y);
@@ -258,6 +272,11 @@ export class Block {
     }
     dimensions = dimensions.multiply(this.scale);
 
-    image(blockImages[this.type], center, dimensions, 0, tint, Vector.center);
+    image({
+      imageUrl: texture || blockImages[this.type],
+      position: center,
+      dimensions,
+      tint
+    });
   }
 }

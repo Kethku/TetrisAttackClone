@@ -21,13 +21,23 @@ export function packTextures(images: {
   do {
     imageLayoutInfo = {};
     correctSize = true;
-    let gap = 5;
+    let gap = 2;
     size *= 2;
     let x = gap;
     let y = gap;
     let rowHeight = imageArray[0].image.height;
     for (let imageData of imageArray) {
       let image = imageData.image;
+      if (x + image.width > size) {
+        x = gap;
+        y += rowHeight + gap;
+        if (y + image.height + gap > size) {
+          correctSize = false;
+          break;
+        }
+        rowHeight = image.height + gap;
+      }
+
       imageLayoutInfo[imageData.id] = [
         x,
         y,
@@ -39,15 +49,6 @@ export function packTextures(images: {
         y + image.height
       ];
       x += image.width + gap;
-      if (x > size) {
-        x = gap;
-        y += rowHeight + gap;
-        if (y + image.height + gap > size) {
-          correctSize = false;
-          break;
-        }
-        rowHeight = image.height + gap;
-      }
     }
   } while (!correctSize);
 
