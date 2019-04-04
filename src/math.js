@@ -88,6 +88,13 @@ export class Vector {
            this.y >= center.y - halfHeight && this.y <= center.y + halfHeight;
   }
 
+  adjacentTo(other) {
+    return (Math.abs(this.x - other.x) == 1 &&
+            this.y - other.y == 0) ||
+           (Math.abs(this.y - other.y) == 1 &&
+            this.x - other.x == 0);
+  }
+
   equals(other) {
     return this.x === other.x && this.y === other.y && this.z === other.z;
   }

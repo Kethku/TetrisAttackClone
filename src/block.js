@@ -270,12 +270,23 @@ export class Block {
     if (this.state === state.DRAGGING || this.state === state.CLEARING) {
       center = center.withZ(10);
     }
-    dimensions = dimensions.multiply(this.scale);
+
+    let heldDimensions = dimensions.multiply(this.scale);
+    let shadowOffset = (heldDimensions.width - dimensions.width);
+
+    if (shadowOffset >= 0.1) {
+      image({
+        imageUrl: texture || blockImages[this.type],
+        position: center.add(new Vector(shadowOffset, -shadowOffset)).withZ(0),
+        dimensions,
+        tint: new Color(0, 0, 0, tint.a * 0.4)
+      });
+    }
 
     image({
       imageUrl: texture || blockImages[this.type],
       position: center,
-      dimensions,
+      dimensions: heldDimensions,
       tint
     });
   }

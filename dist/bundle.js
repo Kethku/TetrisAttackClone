@@ -21554,7 +21554,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./match */ "./src/match.js");
 /* harmony import */ var _block__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./block */ "./src/block.js");
 /* harmony import */ var _math__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./math */ "./src/math.js");
-/* harmony import */ var _garbage__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./garbage */ "./src/garbage.js");
+/* harmony import */ var _clearAnimation__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./clearAnimation */ "./src/clearAnimation.js");
 
 
 
@@ -21596,7 +21596,7 @@ function intentionalAdvance() {
 }
 
 _events__WEBPACK_IMPORTED_MODULE_0__["Update"].Subscribe(() => {
-  if (_match__WEBPACK_IMPORTED_MODULE_3__["matches"].size == 0 && _stopClock__WEBPACK_IMPORTED_MODULE_1__["stopClock"] == 0 && !Object(_garbage__WEBPACK_IMPORTED_MODULE_6__["anyGarbageBreaking"])()) {
+  if (_match__WEBPACK_IMPORTED_MODULE_3__["matches"].size == 0 && _stopClock__WEBPACK_IMPORTED_MODULE_1__["stopClock"] == 0 && !Object(_clearAnimation__WEBPACK_IMPORTED_MODULE_6__["anyClearAnimations"])()) {
     blockAdvancement += advanceSpeed;
     blockPixelAdvancement = blockAdvancement * _grid__WEBPACK_IMPORTED_MODULE_2__["blockWidth"];
     advanceSpeed += advanceAcceleration;
@@ -21904,16 +21904,191 @@ class Block {
     if (this.state === state.DRAGGING || this.state === state.CLEARING) {
       center = center.withZ(10);
     }
-    dimensions = dimensions.multiply(this.scale);
+
+    let heldDimensions = dimensions.multiply(this.scale);
+    let shadowOffset = (heldDimensions.width - dimensions.width);
+
+    if (shadowOffset >= 0.1) {
+      Object(_graphics__WEBPACK_IMPORTED_MODULE_1__["image"])({
+        imageUrl: texture || _images__WEBPACK_IMPORTED_MODULE_6__["blockImages"][this.type],
+        position: center.add(new _math__WEBPACK_IMPORTED_MODULE_0__["Vector"](shadowOffset, -shadowOffset)).withZ(0),
+        dimensions,
+        tint: new _math__WEBPACK_IMPORTED_MODULE_0__["Color"](0, 0, 0, tint.a * 0.4)
+      });
+    }
 
     Object(_graphics__WEBPACK_IMPORTED_MODULE_1__["image"])({
       imageUrl: texture || _images__WEBPACK_IMPORTED_MODULE_6__["blockImages"][this.type],
       position: center,
-      dimensions,
+      dimensions: heldDimensions,
       tint
     });
   }
 }
+
+
+/***/ }),
+
+/***/ "./src/clearAnimation.js":
+/*!*******************************!*\
+  !*** ./src/clearAnimation.js ***!
+  \*******************************/
+/*! exports provided: ClearAnimationFinished, ClearAnimationStarted, GarbageBroken, anyClearAnimations */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ClearAnimationFinished", function() { return ClearAnimationFinished; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ClearAnimationStarted", function() { return ClearAnimationStarted; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "GarbageBroken", function() { return GarbageBroken; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "anyClearAnimations", function() { return anyClearAnimations; });
+/* harmony import */ var _events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./events */ "./src/events.js");
+/* harmony import */ var _eventManager__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./eventManager */ "./src/eventManager.ts");
+/* harmony import */ var _block__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./block */ "./src/block.js");
+/* harmony import */ var _grid__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./grid */ "./src/grid.js");
+/* harmony import */ var _images__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./images */ "./src/images.js");
+/* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./match */ "./src/match.js");
+/* harmony import */ var _garbage__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./garbage */ "./src/garbage.js");
+
+
+
+
+
+
+
+
+const clearDelay = 60;
+const blockClearDelay = 10;
+const breakDelay = 30;
+
+const clearAnimations = new Set();
+
+const ClearAnimationFinished = new _eventManager__WEBPACK_IMPORTED_MODULE_1__["EventManager1"]();
+const ClearAnimationStarted = new _eventManager__WEBPACK_IMPORTED_MODULE_1__["EventManager1"]();
+const GarbageBroken = new _eventManager__WEBPACK_IMPORTED_MODULE_1__["EventManager1"]();
+
+class ClearAnimation {
+  constructor(triggeringBlocks, garbageBlocks) {
+    this.timer = 0;
+    this.triggeringBlocks = triggeringBlocks;
+    this.garbageBlocks = garbageBlocks;
+    this.spawnedBlocks = [];
+
+    for (let garbage of garbageBlocks) {
+      for (let slot of garbage.overlappingSlots()) {
+        this.spawnedBlocks.push({
+          visible: false,
+          block: new _block__WEBPACK_IMPORTED_MODULE_2__["Block"](slot)
+        });
+      }
+    }
+  }
+
+  update() {
+    if (this.timer > clearDelay) {
+      if ((this.timer - clearDelay) % blockClearDelay == 0) {
+        let anyHidden = false;
+        for (let spawnedBlock of this.spawnedBlocks) {
+          if (!spawnedBlock.visible) {
+            spawnedBlock.visible = true;
+            anyHidden = true;
+            break;
+          }
+        }
+
+        if (!anyHidden && !this.breakTimeStarted) {
+          this.breakTimeStarted = this.timer;
+        }
+      }
+    }
+
+    if (this.breakTimeStarted &&
+        this.timer - this.breakTimeStarted > breakDelay) {
+      clearAnimations.delete(this);
+      for (let spawnedBlock of this.spawnedBlocks) {
+        Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(spawnedBlock.block);
+        spawnedBlock.block.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].WAITING;
+      }
+      ClearAnimationFinished.Publish(this);
+    }
+
+    if (this.timer == 0) {
+      ClearAnimationStarted.Publish(this);
+    }
+
+    this.timer++;
+  }
+
+  render() {
+    for (let spawnedBlock of this.spawnedBlocks) {
+      if (!spawnedBlock.visible) {
+        spawnedBlock.block.render(_images__WEBPACK_IMPORTED_MODULE_4__["garbageImages"].Clear);
+      } else {
+        spawnedBlock.block.render();
+      }
+    }
+  }
+}
+
+function anyClearAnimations() {
+  return clearAnimations.size != 0;
+}
+
+function breakBlocks(garbageBlocks, matchedBlocks) {
+  let clearAnimation = new ClearAnimation(matchedBlocks, garbageBlocks);
+  for (let garbage of garbageBlocks) {
+    garbage.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING;
+    GarbageBroken.Publish({
+      garbage,
+      matchedBlocks,
+      spawnedBlocks: clearAnimation.spawnedBlocks
+    });
+  }
+
+  clearAnimations.add(clearAnimation);
+}
+
+_match__WEBPACK_IMPORTED_MODULE_5__["MatchStarted"].Subscribe(matchedBlocks => {
+  let triggeringSlots = [];
+  for (let matchedBlock of matchedBlocks) {
+    triggeringSlots.push(matchedBlock.gridSlot);
+  }
+
+  let garbageToBreak = new Set();
+
+  let foundNewBrokenGarbage;
+  do {
+    foundNewBrokenGarbage = false;
+    for (let garbage of _garbage__WEBPACK_IMPORTED_MODULE_6__["garbageBlocks"]) {
+      if (garbageToBreak.has(garbage)) continue;
+      if (garbage.state == _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) continue;
+      for (let triggeringSlot of triggeringSlots) {
+        if (garbage.adjacentTo(triggeringSlot)) {
+          foundNewBrokenGarbage = true;
+          garbageToBreak.add(garbage);
+          triggeringSlots = triggeringSlots.concat(Array.from(garbage.overlappingSlots()));
+          break;
+        }
+      }
+    }
+  } while (foundNewBrokenGarbage)
+
+  if (garbageToBreak.size != 0) {
+    breakBlocks(garbageToBreak, matchedBlocks);
+  }
+});
+
+_events__WEBPACK_IMPORTED_MODULE_0__["Update"].Subscribe(() => {
+  for (let clearAnimation of clearAnimations) {
+    clearAnimation.update();
+  }
+});
+
+_events__WEBPACK_IMPORTED_MODULE_0__["Draw"].Subscribe(() => {
+  for (let clearAnimation of clearAnimations) {
+    clearAnimation.render();
+  }
+});
 
 
 /***/ }),
@@ -21936,7 +22111,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./match */ "./src/match.js");
 /* harmony import */ var _events__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./events */ "./src/events.js");
 /* harmony import */ var _advance__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./advance */ "./src/advance.js");
-/* harmony import */ var _garbage__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./garbage */ "./src/garbage.js");
+/* harmony import */ var _clearAnimation__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./clearAnimation */ "./src/clearAnimation.js");
 /* harmony import */ var _eventManager__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./eventManager */ "./src/eventManager.ts");
 
 
@@ -21966,11 +22141,13 @@ class Combo {
   constructor(matchedBlocks) {
     this.cascades = 0;
     this.trackedBlocks = new Set();
-    this.processMatchedBlocks(matchedBlocks);
+    this.matchedBlocks = new Set();
+    matchedBlocks.forEach(matchedBlock => this.matchedBlocks.add(matchedBlock));
   }
 
   processMatchedBlocks(matchedBlocks) {
     for (let matchedBlock of matchedBlocks) {
+      this.matchedBlocks.add(matchedBlock);
       for (let y = matchedBlock.gridSlot.y - 1; y > 0; y--) {
         let fallingBlock = Object(_grid__WEBPACK_IMPORTED_MODULE_0__["getBlock"])(matchedBlock.gridSlot.withY(y));
         if (!fallingBlock) break;
@@ -21984,7 +22161,8 @@ class Combo {
 
   update() {
     for (let trackedBlock of this.trackedBlocks) {
-      if (trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].FALLING &&
+      if (trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].SPAWNING &&
+          trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].FALLING &&
           trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].MATCHED &&
           trackedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].CLEARING &&
           (trackedBlock.type === _block__WEBPACK_IMPORTED_MODULE_1__["type"].GARBAGE ||
@@ -21993,9 +22171,17 @@ class Combo {
       }
     }
 
+    for (let matchedBlock of this.matchedBlocks) {
+      if (matchedBlock.state !== _block__WEBPACK_IMPORTED_MODULE_1__["state"].CLEARED) {
+        return false;
+      }
+    }
+
     if (this.trackedBlocks.size == 0) {
       if (this.cascades > 0) {
         ComboFinished.Publish(this.cascades);
+      } else {
+        console.log("Combo fizzled");
       }
       return true;
     }
@@ -22005,34 +22191,36 @@ class Combo {
 }
 
 _match__WEBPACK_IMPORTED_MODULE_2__["MatchStarted"].Subscribe(matchedBlocks => {
+  let foundExistingCombo = false;
+
   for (let combo of combos) {
     if (matchedBlocks.some(matchedBlock => combo.trackedBlocks.has(matchedBlock))) {
+      foundExistingCombo = true;
       combo.cascades++;
       ComboExtended.Publish(matchedBlocks, combo.cascades);
     }
   }
+
+  if (!foundExistingCombo) {
+    combos.add(new Combo(matchedBlocks));
+  }
 });
 
 _match__WEBPACK_IMPORTED_MODULE_2__["MatchCompleted"].Subscribe(clearedBlocks => {
-  let foundExistingCombo = false;
   for (let combo of combos) {
-    if (clearedBlocks.some(clearedBlock => combo.trackedBlocks.has(clearedBlock))) {
-      foundExistingCombo = true;
+    if (clearedBlocks.some(clearedBlock => combo.trackedBlocks.has(clearedBlock)) ||
+        clearedBlocks.some(clearedBlock => combo.matchedBlocks.has(clearedBlock))) {
       combo.processMatchedBlocks(clearedBlocks);
     }
   }
-
-  if (!foundExistingCombo) {
-    combos.add(new Combo(clearedBlocks));
-  }
 });
 
-_garbage__WEBPACK_IMPORTED_MODULE_5__["GarbageBroken"].Subscribe(({ matchedBlocks, spawnedBlocks }) => {
+_clearAnimation__WEBPACK_IMPORTED_MODULE_5__["ClearAnimationStarted"].Subscribe(({ triggeringBlocks, spawnedBlocks }) => {
   for (let combo of combos) {
-    for (let block of matchedBlocks) {
-      if (combo.trackedBlocks.has(block)) {
+    for (let block of triggeringBlocks) {
+      if (combo.matchedBlocks.has(block)) {
         for (let spawnedBlock of spawnedBlocks) {
-          combo.trackedBlocks.add(spawnedBlock);
+          combo.trackedBlocks.add(spawnedBlock.block);
         }
         break;
       }
@@ -22360,24 +22548,21 @@ const Update = new _eventManager__WEBPACK_IMPORTED_MODULE_0__["EventManager1"]()
 /*!************************!*\
   !*** ./src/garbage.js ***!
   \************************/
-/*! exports provided: garbageBlocks, GarbageBroken, Garbage, anyGarbageBreaking */
+/*! exports provided: garbageBlocks, Garbage */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "garbageBlocks", function() { return garbageBlocks; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "GarbageBroken", function() { return GarbageBroken; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Garbage", function() { return Garbage; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "anyGarbageBreaking", function() { return anyGarbageBreaking; });
 /* harmony import */ var _events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./events */ "./src/events.js");
-/* harmony import */ var _images__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./images */ "./src/images.js");
-/* harmony import */ var _block__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./block */ "./src/block.js");
-/* harmony import */ var _grid__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./grid */ "./src/grid.js");
-/* harmony import */ var _advance__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./advance */ "./src/advance.js");
-/* harmony import */ var _graphics__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./graphics */ "./src/graphics.js");
+/* harmony import */ var _advance__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./advance */ "./src/advance.js");
+/* harmony import */ var _grid__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./grid */ "./src/grid.js");
+/* harmony import */ var _garbageRenderUtils__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./garbageRenderUtils */ "./src/garbageRenderUtils.js");
+/* harmony import */ var _graphics__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./graphics */ "./src/graphics.js");
+/* harmony import */ var _block__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./block */ "./src/block.js");
 /* harmony import */ var _math__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./math */ "./src/math.js");
-/* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./match */ "./src/match.js");
-/* harmony import */ var _eventManager__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./eventManager */ "./src/eventManager.ts");
+/* harmony import */ var _eventManager__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./eventManager */ "./src/eventManager.ts");
 
 
 
@@ -22386,90 +22571,16 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-
-
-const clearDelay = 60;
-const blockClearDelay = 10;
-const breakDelay = 30;
 
 const garbageBlocks = new Set();
 
-const GarbageBroken = new _eventManager__WEBPACK_IMPORTED_MODULE_8__["EventManager1"]();
-
-function singleRowGarbageTexture(width) {
-  switch (width) {
-  case 3:
-    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].ThreeWide;
-  case 4:
-    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].FourWide;
-  case 5:
-    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].FiveWide;
-  case 6:
-    return _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].SingleLine;
-  default:
-    throw "Invalid single high block.";
-  }
-}
-
-function* multiRowGarbageTexture(height) {
-  if (height == 1) yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].SingleLine;
-  else if (height == 2) yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].TwoLine;
-  else {
-    let middleBlockHeight = 2 - (height % 2);
-    let remainingMiddles = height - 2 - middleBlockHeight;
-    yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].TopLine;
-    for (let i = 0; i < remainingMiddles / 2; i++) {
-      yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].MiddleLineNoExclamationPoint;
-    }
-    yield height % 2 == 0
-      ? _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].EvenMiddleLine
-      : _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].MiddleLine;
-    for (let i = 0; i < remainingMiddles / 2; i++) {
-      yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].MiddleLineNoExclamationPoint;
-    }
-    yield _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].BottomLine;
-  }
-}
-
-function garbageTextureHeight(texture) {
-  if (texture === _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].EvenMiddleLine ||
-      texture === _images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].TwoLine) {
-    return _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"] * 2;
-  } else {
-    return _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"];
-  }
-}
-
-function garbageRenderInfo(blockDimensions) {
-  if (blockDimensions.y != 1 && blockDimensions.x != 6) {
-    throw "Invalid Garbage Size";
-  }
-
-  if (blockDimensions.y == 1) {
-    return [
-      {
-        texture: singleRowGarbageTexture(blockDimensions.width),
-        dimensions: new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](blockDimensions.width * _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"], _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"])
-      }
-    ];
-  }
-
-  let textures = multiRowGarbageTexture(blockDimensions.height);
-  return Array.from(textures).map(texture => {
-    return {
-      texture,
-      dimensions: new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6 * _grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"], garbageTextureHeight(texture))
-    };
-  });
-}
-
 class Garbage {
   constructor(left, gridDimensions) {
-    this.gridSlot = new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](left, _advance__WEBPACK_IMPORTED_MODULE_4__["previousFilledY"] - _grid__WEBPACK_IMPORTED_MODULE_3__["gridBlockDimensions"].height - gridDimensions.height);
+    this.gridSlot = new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](left, _advance__WEBPACK_IMPORTED_MODULE_1__["previousFilledY"] - _grid__WEBPACK_IMPORTED_MODULE_2__["gridBlockDimensions"].height - gridDimensions.height);
     this.gridPosition = this.gridSlot.clone();
     this.gridDimensions = gridDimensions;
-    this.type = _block__WEBPACK_IMPORTED_MODULE_2__["type"].GARBAGE;
-    this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].FALLING;
+    this.type = _block__WEBPACK_IMPORTED_MODULE_5__["type"].GARBAGE;
+    this.state = _block__WEBPACK_IMPORTED_MODULE_5__["state"].FALLING;
     garbageBlocks.add(this);
   }
 
@@ -22484,7 +22595,7 @@ class Garbage {
   gapBelow() {
     let gapBelow = true;
     for (let x = this.gridSlot.x; x < this.gridSlot.x + this.gridDimensions.x; x++) {
-      if (Object(_grid__WEBPACK_IMPORTED_MODULE_3__["getBlock"])(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](x, this.gridSlot.y + this.gridDimensions.height))) {
+      if (Object(_grid__WEBPACK_IMPORTED_MODULE_2__["getBlock"])(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](x, this.gridSlot.y + this.gridDimensions.height))) {
         gapBelow = false;
         break;
       }
@@ -22494,166 +22605,166 @@ class Garbage {
 
   adjacentTo(slot) {
     for (let overlappingSlot of this.overlappingSlots()) {
-      if ((Math.abs(slot.x - overlappingSlot.x) == 1 &&
-           slot.y - overlappingSlot.y == 0) ||
-          (Math.abs(slot.y - overlappingSlot.y) == 1 &&
-           slot.x - overlappingSlot.x == 0)) {
-        return true;
-      }
+      if (slot.adjacentTo(overlappingSlot)) return true;
     }
     return false;
   }
 
-  handleFalling() {
-    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) return;
+  calculateTopLeft() {
+    let blocksTopLeft = new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](
+      _grid__WEBPACK_IMPORTED_MODULE_2__["gridCenter"].x - _grid__WEBPACK_IMPORTED_MODULE_2__["gridDimensions"].width / 2,
+      _grid__WEBPACK_IMPORTED_MODULE_2__["gridCenter"].y - _grid__WEBPACK_IMPORTED_MODULE_2__["gridDimensions"].height / 2 + _advance__WEBPACK_IMPORTED_MODULE_1__["blockPixelAdvancement"]);
+    return blocksTopLeft.add(this.gridPosition.multiply(_grid__WEBPACK_IMPORTED_MODULE_2__["blockWidth"]).multiplyParts(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](1, -1))).withZ(2);
+  }
 
-    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].WAITING && this.gapBelow()) {
-      this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].FALLING;
+  update() {
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_5__["state"].CLEARING) return;
+
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_5__["state"].WAITING && this.gapBelow()) {
+      this.state = _block__WEBPACK_IMPORTED_MODULE_5__["state"].FALLING;
     }
 
-    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].FALLING) {
-      this.gridPosition.y += _block__WEBPACK_IMPORTED_MODULE_2__["fallSpeed"];
+    if (this.state === _block__WEBPACK_IMPORTED_MODULE_5__["state"].FALLING) {
+      this.gridPosition.y += _block__WEBPACK_IMPORTED_MODULE_5__["fallSpeed"];
       if (this.gridPosition.y > this.gridSlot.y && !this.gapBelow()) {
         this.gridPosition.y = this.gridSlot.y;
-        this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].WAITING;
+        this.state = _block__WEBPACK_IMPORTED_MODULE_5__["state"].WAITING;
       } else {
         let previousSlot = this.gridSlot.clone();
         let newY = Math.ceil(this.gridPosition.y);
         if (newY != this.gridSlot.y) {
           for (let slot of this.overlappingSlots()) {
-            Object(_grid__WEBPACK_IMPORTED_MODULE_3__["clearSlot"])(slot);
+            Object(_grid__WEBPACK_IMPORTED_MODULE_2__["clearSlot"])(slot);
           }
           this.gridSlot.y = newY;
-          Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(this);
+          Object(_grid__WEBPACK_IMPORTED_MODULE_2__["setBlock"])(this);
         }
       }
     }
-  }
-
-  break() {
-    this.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING;
-    this.timer = 0;
-    this.spawnedBlocks = [];
-
-    for (let slot of this.overlappingSlots()) {
-      this.spawnedBlocks.push({
-        visible: false,
-        block: new _block__WEBPACK_IMPORTED_MODULE_2__["Block"](slot)
-      });
-    }
-  }
-
-  handleBreaking() {
-    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) {
-      if (this.timer > clearDelay) {
-        if ((this.timer - clearDelay) % blockClearDelay == 0) {
-          let anyHidden = false;
-          for (let spawnedBlock of this.spawnedBlocks) {
-            if (!spawnedBlock.visible) {
-              spawnedBlock.visible = true;
-              anyHidden = true;
-              break;
-            }
-          }
-
-          if (!anyHidden && !this.breakTimeStarted) {
-            this.breakTimeStarted = this.timer;
-          }
-        }
-      }
-
-      if (this.breakTimeStarted &&
-          this.timer - this.breakTimeStarted > breakDelay) {
-        garbageBlocks.delete(this);
-        for (let spawnedBlock of this.spawnedBlocks) {
-          Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(spawnedBlock.block);
-          spawnedBlock.block.state = _block__WEBPACK_IMPORTED_MODULE_2__["state"].WAITING;
-        }
-      }
-
-      this.timer++;
-    }
-  }
-
-  renderGarbage(topLeft) {
-    let renderInfos = garbageRenderInfo(this.gridDimensions);
-    for (let renderInfo of renderInfos) {
-      Object(_graphics__WEBPACK_IMPORTED_MODULE_5__["image"])({
-        imageUrl: renderInfo.texture,
-        position: topLeft,
-        dimensions: renderInfo.dimensions,
-        center: _math__WEBPACK_IMPORTED_MODULE_6__["Vector"].topLeft
-      });
-      topLeft = topLeft.add(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](0, -renderInfo.dimensions.height));
-    }
-  }
-
-  renderBreaking(topLeft) {
-    for (let spawnedBlock of this.spawnedBlocks) {
-      if (!spawnedBlock.visible) {
-        spawnedBlock.block.render(_images__WEBPACK_IMPORTED_MODULE_1__["garbageImages"].Clear);
-      } else {
-        spawnedBlock.block.render();
-      }
-    }
-  }
-
-  update() {
-    this.handleFalling();
-    this.handleBreaking();
   }
 
   render() {
-    let blocksTopLeft = new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](
-      _grid__WEBPACK_IMPORTED_MODULE_3__["gridCenter"].x - _grid__WEBPACK_IMPORTED_MODULE_3__["gridDimensions"].width / 2,
-      _grid__WEBPACK_IMPORTED_MODULE_3__["gridCenter"].y - _grid__WEBPACK_IMPORTED_MODULE_3__["gridDimensions"].height / 2 + _advance__WEBPACK_IMPORTED_MODULE_4__["blockPixelAdvancement"]);
-    let topLeft = blocksTopLeft.add(this.gridPosition.multiply(_grid__WEBPACK_IMPORTED_MODULE_3__["blockWidth"]).multiplyParts(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](1, -1))).withZ(2);
+    let topLeft = this.calculateTopLeft();
 
-    if (this.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) {
-      this.renderBreaking(topLeft);
-    } else {
-      this.renderGarbage(topLeft);
-    }
-  }
-}
-
-_match__WEBPACK_IMPORTED_MODULE_7__["MatchStarted"].Subscribe(matchedBlocks => {
-  for (let garbage of garbageBlocks) {
-    if (garbage.state == _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) continue;
-    for (let matchedBlock of matchedBlocks) {
-      if (garbage.adjacentTo(matchedBlock.gridSlot)) {
-        garbage.break();
-        GarbageBroken.Publish({
-          matchedBlocks,
-          spawnedBlocks: garbage.spawnedBlocks
+    if (this.state !== _block__WEBPACK_IMPORTED_MODULE_5__["state"].CLEARING) {
+      let renderInfos = Object(_garbageRenderUtils__WEBPACK_IMPORTED_MODULE_3__["garbageRenderInfo"])(this.gridDimensions);
+      for (let renderInfo of renderInfos) {
+        Object(_graphics__WEBPACK_IMPORTED_MODULE_4__["image"])({
+          imageUrl: renderInfo.texture,
+          position: topLeft,
+          dimensions: renderInfo.dimensions,
+          center: _math__WEBPACK_IMPORTED_MODULE_6__["Vector"].topLeft
         });
-        break;
+        topLeft = topLeft.add(new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](0, -renderInfo.dimensions.height));
       }
     }
   }
-});
-
-function anyGarbageBreaking() {
-  for (let garbage of garbageBlocks) {
-    if (garbage.state === _block__WEBPACK_IMPORTED_MODULE_2__["state"].CLEARING) return true;
-  }
-  return false;
 }
 
-
 _events__WEBPACK_IMPORTED_MODULE_0__["Setup"].Subscribe(() => {
-  Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(new Garbage(0, new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6, 3)));
+  Object(_grid__WEBPACK_IMPORTED_MODULE_2__["setBlock"])(new Garbage(0, new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6, 3)));
 });
 
 _events__WEBPACK_IMPORTED_MODULE_0__["Update"].Subscribe(() => {
   if (Math.random() < 0.002) {
-    Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(new Garbage(0, new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6, Math.floor(Math.pow(Math.random(), 3) * 3))));
+    Object(_grid__WEBPACK_IMPORTED_MODULE_2__["setBlock"])(new Garbage(0, new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](6, Math.floor(Math.pow(Math.random(), 3) * 3))));
   }
 
   if (Math.random() < 0.002) {
-    Object(_grid__WEBPACK_IMPORTED_MODULE_3__["setBlock"])(new Garbage(Math.floor(Math.random() * 3), new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](Math.floor(Math.random() * 3) + 3, 1)));
+    let width = Math.floor(Math.random() * 3) + 3;
+    Object(_grid__WEBPACK_IMPORTED_MODULE_2__["setBlock"])(new Garbage(Math.floor(Math.random() * (6 - width)), new _math__WEBPACK_IMPORTED_MODULE_6__["Vector"](width, 1)));
   }
 });
+
+
+/***/ }),
+
+/***/ "./src/garbageRenderUtils.js":
+/*!***********************************!*\
+  !*** ./src/garbageRenderUtils.js ***!
+  \***********************************/
+/*! exports provided: singleRowGarbageTexture, multiRowGarbageTexture, garbageTextureHeight, garbageRenderInfo */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "singleRowGarbageTexture", function() { return singleRowGarbageTexture; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "multiRowGarbageTexture", function() { return multiRowGarbageTexture; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "garbageTextureHeight", function() { return garbageTextureHeight; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "garbageRenderInfo", function() { return garbageRenderInfo; });
+/* harmony import */ var _images__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./images */ "./src/images.js");
+/* harmony import */ var _grid__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./grid */ "./src/grid.js");
+/* harmony import */ var _math__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./math */ "./src/math.js");
+
+
+
+
+function singleRowGarbageTexture(width) {
+  switch (width) {
+  case 3:
+    return _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].ThreeWide;
+  case 4:
+    return _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].FourWide;
+  case 5:
+    return _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].FiveWide;
+  case 6:
+    return _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].SingleLine;
+  default:
+    throw "Invalid single high block.";
+  }
+}
+
+function* multiRowGarbageTexture(height) {
+  if (height == 1) yield _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].SingleLine;
+  else if (height == 2) yield _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].TwoLine;
+  else {
+    let middleBlockHeight = 2 - (height % 2);
+    let remainingMiddles = height - 2 - middleBlockHeight;
+    yield _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].TopLine;
+    for (let i = 0; i < remainingMiddles / 2; i++) {
+      yield _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].MiddleLineNoExclamationPoint;
+    }
+    yield height % 2 == 0
+      ? _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].EvenMiddleLine
+      : _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].MiddleLine;
+    for (let i = 0; i < remainingMiddles / 2; i++) {
+      yield _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].MiddleLineNoExclamationPoint;
+    }
+    yield _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].BottomLine;
+  }
+}
+
+function garbageTextureHeight(texture) {
+  if (texture === _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].EvenMiddleLine ||
+      texture === _images__WEBPACK_IMPORTED_MODULE_0__["garbageImages"].TwoLine) {
+    return _grid__WEBPACK_IMPORTED_MODULE_1__["blockWidth"] * 2;
+  } else {
+    return _grid__WEBPACK_IMPORTED_MODULE_1__["blockWidth"];
+  }
+}
+
+function garbageRenderInfo(blockDimensions) {
+  if (blockDimensions.y != 1 && blockDimensions.x != 6) {
+    throw "Invalid Garbage Size";
+  }
+
+  if (blockDimensions.y == 1) {
+    return [
+      {
+        texture: singleRowGarbageTexture(blockDimensions.width),
+        dimensions: new _math__WEBPACK_IMPORTED_MODULE_2__["Vector"](blockDimensions.width * _grid__WEBPACK_IMPORTED_MODULE_1__["blockWidth"], _grid__WEBPACK_IMPORTED_MODULE_1__["blockWidth"])
+      }
+    ];
+  }
+
+  let textures = multiRowGarbageTexture(blockDimensions.height);
+  return Array.from(textures).map(texture => {
+    return {
+      texture,
+      dimensions: new _math__WEBPACK_IMPORTED_MODULE_2__["Vector"](6 * _grid__WEBPACK_IMPORTED_MODULE_1__["blockWidth"], garbageTextureHeight(texture))
+    };
+  });
+}
 
 
 /***/ }),
@@ -22950,7 +23061,7 @@ let background = _block__WEBPACK_IMPORTED_MODULE_3__["standardBlocks"][Math.floo
 _events__WEBPACK_IMPORTED_MODULE_1__["Draw"].Subscribe(() => {
   Object(_graphics__WEBPACK_IMPORTED_MODULE_2__["image"])({
     imageUrl: _images__WEBPACK_IMPORTED_MODULE_5__["blockImages"][background],
-    position: gridCenter,
+    position: gridCenter.withZ(-5),
     dimensions: gridDimensions,
     tint: new _math__WEBPACK_IMPORTED_MODULE_0__["Color"](0.5, 0.5, 0.5, 0.5)
   });
@@ -23137,6 +23248,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _combo__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./combo */ "./src/combo.js");
 /* harmony import */ var _match__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./match */ "./src/match.js");
 /* harmony import */ var _garbage__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./garbage */ "./src/garbage.js");
+/* harmony import */ var _clearAnimation__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./clearAnimation */ "./src/clearAnimation.js");
+
 
 
 
@@ -23240,6 +23353,7 @@ class Match {
       if (!anyClearing) {
         MatchCompleted.Publish(Array.from(this.blocks));
         for (let block of this.blocks) {
+          block.state = _block__WEBPACK_IMPORTED_MODULE_1__["state"].CLEARED;
           Object(_block__WEBPACK_IMPORTED_MODULE_1__["deleteBlock"])(block);
         }
         return true;
@@ -23248,6 +23362,38 @@ class Match {
 
     return false;
   }
+}
+
+function separateMatches(matchBlocks) {
+  let groups = [];
+  while (matchBlocks.size != 0) {
+    let seed = matchBlocks.values().next().value;
+    let group = new Set();
+    group.add(seed);
+
+    let addedBlockToGroup;
+    do {
+      addedBlockToGroup = false;
+
+      let blocksToRemove = [];
+
+      for (let matchBlock of matchBlocks) {
+        for (let groupBlock of group) {
+          if (groupBlock.gridSlot.adjacentTo(matchBlock.gridSlot)) {
+            group.add(matchBlock);
+            blocksToRemove.push(matchBlock);
+            addedBlockToGroup = true;
+          }
+        }
+      }
+
+      blocksToRemove.forEach(block => matchBlocks.delete(block));
+    } while(addedBlockToGroup)
+
+    groups.push(group);
+  }
+
+  return groups;
 }
 
 function findNewMatches() {
@@ -23309,8 +23455,11 @@ function findNewMatches() {
   }
 
   if (matchBlocks.size != 0) {
-    matches.add(new Match(matchBlocks));
-    MatchStarted.Publish(Array.from(matchBlocks));
+    let matchGroups = separateMatches(matchBlocks);
+    for (let matchGroup of matchGroups) {
+      matches.add(new Match(matchGroup));
+      MatchStarted.Publish(Array.from(matchGroup));
+    }
   }
 }
 
@@ -23431,6 +23580,13 @@ class Vector {
     let halfHeight = dimensions.height / 2;
     return this.x >= center.x - halfWidth && this.x <= center.x + halfWidth &&
            this.y >= center.y - halfHeight && this.y <= center.y + halfHeight;
+  }
+
+  adjacentTo(other) {
+    return (Math.abs(this.x - other.x) == 1 &&
+            this.y - other.y == 0) ||
+           (Math.abs(this.y - other.y) == 1 &&
+            this.x - other.x == 0);
   }
 
   equals(other) {

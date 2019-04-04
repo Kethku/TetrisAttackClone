@@ -47,6 +47,7 @@ class Match {
       if (!anyClearing) {
         MatchCompleted.Publish(Array.from(this.blocks));
         for (let block of this.blocks) {
+          block.state = state.CLEARED;
           deleteBlock(block);
         }
         return true;
@@ -55,6 +56,38 @@ class Match {
 
     return false;
   }
+}
+
+function separateMatches(matchBlocks) {
+  let groups = [];
+  while (matchBlocks.size != 0) {
+    let seed = matchBlocks.values().next().value;
+    let group = new Set();
+    group.add(seed);
+
+    let addedBlockToGroup;
+    do {
+      addedBlockToGroup = false;
+
+      let blocksToRemove = [];
+
+      for (let matchBlock of matchBlocks) {
+        for (let groupBlock of group) {
+          if (groupBlock.gridSlot.adjacentTo(matchBlock.gridSlot)) {
+            group.add(matchBlock);
+            blocksToRemove.push(matchBlock);
+            addedBlockToGroup = true;
+          }
+        }
+      }
+
+      blocksToRemove.forEach(block => matchBlocks.delete(block));
+    } while(addedBlockToGroup)
+
+    groups.push(group);
+  }
+
+  return groups;
 }
 
 export function findNewMatches() {
@@ -116,8 +149,11 @@ export function findNewMatches() {
   }
 
   if (matchBlocks.size != 0) {
-    matches.add(new Match(matchBlocks));
-    MatchStarted.Publish(Array.from(matchBlocks));
+    let matchGroups = separateMatches(matchBlocks);
+    for (let matchGroup of matchGroups) {
+      matches.add(new Match(matchGroup));
+      MatchStarted.Publish(Array.from(matchGroup));
+    }
   }
 }
 

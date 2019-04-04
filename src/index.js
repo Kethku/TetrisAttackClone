@@ -10,6 +10,7 @@ import "./advance";
 import "./combo";
 import "./match";
 import "./garbage";
+import "./clearAnimation";
 
 let frames = 0;
 function loop() {

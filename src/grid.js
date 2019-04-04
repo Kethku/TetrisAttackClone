@@ -98,7 +98,7 @@ let background = standardBlocks[Math.floor(Math.random() * standardBlocks.length
 Draw.Subscribe(() => {
   image({
     imageUrl: blockImages[background],
-    position: gridCenter,
+    position: gridCenter.withZ(-5),
     dimensions: gridDimensions,
     tint: new Color(0.5, 0.5, 0.5, 0.5)
   });
