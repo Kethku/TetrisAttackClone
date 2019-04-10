@@ -1,6 +1,6 @@
 import { Vector } from "./math";
 import { Update } from "./events";
-import { canvas, screenSize } from "./graphics";
+import { canvas, screenSize } from "./webgl";
 
 export let touchPosition = Vector.zero;
 export let touchId = null;

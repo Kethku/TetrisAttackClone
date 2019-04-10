@@ -1,6 +1,7 @@
 import { Vector, Color } from "./math";
 import { Update, Draw } from "./events";
-import { image, screenSize, Resized } from "./graphics";
+import { screenSize, Resized } from "./webgl";
+import { image } from "./graphics";
 import { deleteBlock, heldBlock, state, type, Block, standardBlocks } from "./block";
 import { matches } from "./match";
 import { blockImages } from "./images";

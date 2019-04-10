@@ -1,7 +1,7 @@
 import "babel-polyfill";
 
 import { Setup, Update, Draw } from "./events";
-import { drawToScreen, loadTextures, width, height } from "./graphics";
+import { drawToScreen, loadTextures, width, height } from "./webgl";
 import { imageURLs } from "./images";
 
 import "./grid";

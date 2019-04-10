@@ -1,11 +1,11 @@
 export const blockImages = {
   "Bang": "./images/Bang.png",
-  "Stick": "./images/Stick.png",
-  "Sun": "./images/Sun.png",
-  "Cloud": "./images/Cloud.png",
+  "Wood": "./images/Wood.png",
+  "Ice": "./images/Ice.png",
+  "Stone": "./images/Stone.png",
   "Leaf": "./images/Leaf.png",
-  "Moon": "./images/Moon.png",
-  "Rain": "./images/Rain.png"
+  "Lava": "./images/Lava.png",
+  "Gold": "./images/Gold.png"
 };
 
 export const garbageImages = {

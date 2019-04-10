@@ -2,7 +2,7 @@ import { Setup, Update } from "./events";
 import { previousFilledY, blockPixelAdvancement } from "./advance";
 import { gridBlockDimensions, gridCenter, gridDimensions, blockWidth, getBlock, clearSlot, setBlock } from "./grid";
 import { garbageRenderInfo } from "./garbageRenderUtils";
-import { image } from "./graphics";
+import { image, shake } from "./graphics";
 import { type, state, fallSpeed } from "./block";
 import { Vector } from "./math";
 import { EventManager1 } from "./eventManager";
@@ -63,7 +63,10 @@ export class Garbage {
       this.gridPosition.y += fallSpeed;
       if (this.gridPosition.y > this.gridSlot.y && !this.gapBelow()) {
         this.gridPosition.y = this.gridSlot.y;
-        this.state = state.WAITING;
+        if (this.state !== state.WAITING) {
+          shake();
+          this.state = state.WAITING;
+        }
       } else {
         let previousSlot = this.gridSlot.clone();
         let newY = Math.ceil(this.gridPosition.y);

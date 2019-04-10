@@ -17,23 +17,23 @@ const rotateSpeed = 0.3;
 export const fallSpeed = 0.3;
 
 export const type = {
-  STICK: "Stick",
-  SUN: "Sun",
-  CLOUD: "Cloud",
+  WOOD: "Wood",
+  ICE: "Ice",
+  STONE: "Stone",
   LEAF: "Leaf",
-  MOON: "Moon",
-  RAIN: "Rain",
+  LAVA: "Lava",
+  GOLD: "Gold",
   BANG: "Bang",
   GARBAGE: "Garbage"
 };
 
 export const standardBlocks = [
-  type.STICK,
-  type.SUN,
-  type.CLOUD,
+  type.WOOD,
+  type.ICE,
+  type.STONE,
   type.LEAF,
-  type.MOON,
-  type.RAIN
+  type.LAVA,
+  type.GOLD
 ];
 
 export const state = {
