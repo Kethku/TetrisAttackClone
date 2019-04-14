@@ -1,7 +1,7 @@
 import { Vector, Color } from "./math";
 import { image } from "./graphics";
 import { touchPosition, touchDown, touchStarted } from "./touch";
-import { getBlock, setBlock, clearSlot, gridCenter, gridDimensions, gridBlockDimensions, blockWidth } from "./grid";
+import { getBlock, setBlock, clearSlot, gridToScreen, gridCenter, gridDimensions, gridBlockDimensions, blockWidth } from "./grid";
 import { intentionalAdvance, blockPixelAdvancement, previousFilledY } from "./advance";
 import { clearingTime } from "./match";
 import { blockImages } from "./images";
@@ -78,19 +78,6 @@ export class Block {
 
   overlappingSlots() {
     return [ this.gridSlot ];
-  }
-
-  calculateLocation() {
-    let blocksTopLeft = new Vector(
-      gridCenter.x - gridDimensions.width / 2,
-      gridCenter.y - gridDimensions.height / 2 + blockPixelAdvancement);
-
-    // To get the actual position of a block, add the block position times the
-    // block width with the y axis reversed.
-    let topLeft = blocksTopLeft.add(this.gridPosition.multiply(blockWidth).multiplyParts(new Vector(1, -1)));
-    let dimensions = new Vector(blockWidth, blockWidth);
-
-    return { center: topLeft.add(dimensions.divide(2).multiplyParts(new Vector(1, -1))), dimensions };
   }
 
   calculateColor(centerY) {
@@ -251,24 +238,32 @@ export class Block {
   }
 
   update() {
-    let { center, dimensions } = this.calculateLocation();
+    let { position, dimensions } = gridToScreen({
+      position: this.gridPosition.add(Vector.half),
+      dimensions: Vector.one
+    });
 
-    this.handleDragging(center, dimensions);
+    this.handleDragging(position, dimensions);
     this.handleFalling();
     this.animateBlockSize();
     this.handleClearAnimation();
 
-    if (this.state === state.SPAWNING && touchPosition.within(center, dimensions) && touchStarted) {
+    if (this.state === state.SPAWNING &&
+        touchPosition.within(position, dimensions) &&
+        touchStarted) {
       intentionalAdvance();
     }
   }
 
   render(texture) {
-    let { center, dimensions } = this.calculateLocation();
+    let { position, dimensions } = gridToScreen({
+      position: this.gridPosition.add(Vector.half),
+      dimensions: Vector.one
+    });
 
-    let tint = this.calculateColor(center.y);
+    let tint = this.calculateColor(position.y);
     if (this.state === state.DRAGGING || this.state === state.CLEARING) {
-      center = center.withZ(10);
+      position = position.withZ(10);
     }
 
     let heldDimensions = dimensions.multiply(this.scale);
@@ -277,7 +272,8 @@ export class Block {
     if (shadowOffset >= 0.1) {
       image({
         imageUrl: texture || blockImages[this.type],
-        position: center.add(new Vector(shadowOffset, -shadowOffset)).withZ(0),
+        position: position.add(new Vector(shadowOffset, -shadowOffset))
+                          .withZ(shadowOffset),
         dimensions,
         tint: new Color(0, 0, 0, tint.a * 0.4)
       });
@@ -285,7 +281,7 @@ export class Block {
 
     image({
       imageUrl: texture || blockImages[this.type],
-      position: center,
+      position: position.withZ(position.z + shadowOffset),
       dimensions: heldDimensions,
       tint
     });

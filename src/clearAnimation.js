@@ -1,10 +1,12 @@
 import { Update, Draw } from "./events";
 import { EventManager1 } from "./eventManager";
 import { Block, state } from "./block";
-import { setBlock } from "./grid";
+import { setBlock, gridToScreen } from "./grid";
 import { garbageImages } from "./images";
 import { MatchStarted } from "./match";
 import { garbageBlocks } from "./garbage";
+import { image } from "./graphics";
+import { Vector } from "./math";
 
 const clearDelay = 60;
 const blockClearDelay = 10;
@@ -21,10 +23,12 @@ class ClearAnimation {
     this.timer = 0;
     this.triggeringBlocks = triggeringBlocks;
     this.garbageBlocks = garbageBlocks;
+    this.coveredSlots = new Set();
     this.spawnedBlocks = [];
 
     for (let garbage of garbageBlocks) {
       for (let slot of garbage.overlappingSlots()) {
+        this.coveredSlots.add(slot);
         this.spawnedBlocks.push({
           visible: false,
           block: new Block(slot)
@@ -40,6 +44,7 @@ class ClearAnimation {
         for (let spawnedBlock of this.spawnedBlocks) {
           if (!spawnedBlock.visible) {
             spawnedBlock.visible = true;
+            this.coveredSlots.delete(spawnedBlock.gridSlot);
             anyHidden = true;
             break;
           }
@@ -70,11 +75,20 @@ class ClearAnimation {
 
   render() {
     for (let spawnedBlock of this.spawnedBlocks) {
-      if (!spawnedBlock.visible) {
-        spawnedBlock.block.render(garbageImages.Clear);
-      } else {
-        spawnedBlock.block.render();
-      }
+      spawnedBlock.block.render();
+    }
+
+    for (let coveredSlot of this.coveredSlots) {
+      let renderInfo = gridToScreen({
+        position: coveredSlot,
+        dimensions: Vector.One
+      });
+
+      image({
+        imageUrl: garbageImages.Clear,
+        center: Vector.topLeft,
+        ...renderInfo
+      });
     }
   }
 }

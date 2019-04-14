@@ -5,14 +5,20 @@ import { image } from "./graphics";
 import { deleteBlock, heldBlock, state, type, Block, standardBlocks } from "./block";
 import { matches } from "./match";
 import { blockImages } from "./images";
+import { blockPixelAdvancement } from "./advance";
 
 const startingMargin = 0.05;
 export const gridBlockDimensions = new Vector(6, 12);
 
-/////////////////
-// Setup State //
-/////////////////
+export let gridCenter = Vector.zero;
+export let gridDimensions = Vector.one;
+export let blockWidth = 0;
+
 let blocks = {};
+
+////////////////////
+// Grid Utilities //
+////////////////////
 
 export function getBlock(gridSlot) {
   let row = blocks[gridSlot.y];
@@ -58,13 +64,29 @@ export function* allBlocks() {
   }
 }
 
+export function gridToScreen({ position, dimensions }) {
+  let result = {};
+
+  if (position) {
+    let blocksTopLeft = new Vector(
+      gridCenter.x - gridDimensions.width / 2,
+      gridCenter.y - gridDimensions.height / 2 + blockPixelAdvancement);
+
+    result.position = blocksTopLeft.add(
+      position.multiply(blockWidth)
+        .multiplyParts(new Vector(1, -1)));
+  }
+
+  if (dimensions) {
+    result.dimensions = dimensions.multiply(blockWidth);
+  }
+
+  return result;
+}
+
 /////////////////////
 // Handle Resizing //
 /////////////////////
-export let gridCenter = Vector.zero;
-export let gridDimensions = Vector.one;
-export let blockWidth = 0;
-
 function calculateGridSizes() {
   gridCenter = screenSize.divide(2);
 

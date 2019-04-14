@@ -21,6 +21,7 @@ export const garbageImages = {
   "MiddleLineNoExclamationPoint": "./images/garbage/MiddleLineGarbageNoExclamationPoint.png",
   "BottomLine": "./images/garbage/BottomLineGarbage.png",
 
+  "Lock": "./images/garbage/Lock.png",
   "Clear": "./images/garbage/Clear.png"
 };
 

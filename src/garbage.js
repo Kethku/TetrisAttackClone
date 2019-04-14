@@ -1,13 +1,28 @@
-import { Setup, Update } from "./events";
+import { Update } from "./events";
 import { previousFilledY, blockPixelAdvancement } from "./advance";
-import { gridBlockDimensions, gridCenter, gridDimensions, blockWidth, getBlock, clearSlot, setBlock } from "./grid";
-import { garbageRenderInfo } from "./garbageRenderUtils";
+import { gridBlockDimensions, gridToScreen, gridCenter, gridDimensions, blockWidth, getBlock, clearSlot, setBlock } from "./grid";
+import { garbageImages } from "./images";
 import { image, shake } from "./graphics";
 import { type, state, fallSpeed } from "./block";
 import { Vector } from "./math";
 import { EventManager1 } from "./eventManager";
 
 export const garbageBlocks = new Set();
+
+function singleRowGarbageTexture(width) {
+  switch (width) {
+  case 3:
+    return garbageImages.ThreeWide;
+  case 4:
+    return garbageImages.FourWide;
+  case 5:
+    return garbageImages.FiveWide;
+  case 6:
+    return garbageImages.SingleLine;
+  default:
+    throw "Invalid single high block.";
+  }
+}
 
 export class Garbage {
   constructor(left, gridDimensions) {
@@ -45,13 +60,6 @@ export class Garbage {
     return false;
   }
 
-  calculateTopLeft() {
-    let blocksTopLeft = new Vector(
-      gridCenter.x - gridDimensions.width / 2,
-      gridCenter.y - gridDimensions.height / 2 + blockPixelAdvancement);
-    return blocksTopLeft.add(this.gridPosition.multiply(blockWidth).multiplyParts(new Vector(1, -1))).withZ(2);
-  }
-
   update() {
     if (this.state === state.CLEARING) return;
 
@@ -82,26 +90,21 @@ export class Garbage {
   }
 
   render() {
-    let topLeft = this.calculateTopLeft();
-
-    if (this.state !== state.CLEARING) {
-      let renderInfos = garbageRenderInfo(this.gridDimensions);
-      for (let renderInfo of renderInfos) {
-        image({
-          imageUrl: renderInfo.texture,
-          position: topLeft,
-          dimensions: renderInfo.dimensions,
-          center: Vector.topLeft
-        });
-        topLeft = topLeft.add(new Vector(0, -renderInfo.dimensions.height));
-      }
+    let { position, dimensions } = gridToScreen({
+      position: this.gridPosition
+        .withZ(-0.1),
+      dimensions: this.gridDimensions
+    });
+    for (let i = 0; i < this.gridDimensions.height; i++) {
+      image({
+        imageUrl: singleRowGarbageTexture(this.gridDimensions.width),
+        position: position.withY(position.y - i * blockWidth).withZ(-0.1),
+        dimensions: new Vector(dimensions.width, blockWidth),
+        center: Vector.topLeft
+      });
     }
   }
 }
-
-Setup.Subscribe(() => {
-  setBlock(new Garbage(0, new Vector(6, 3)));
-});
 
 Update.Subscribe(() => {
   if (Math.random() < 0.002) {
