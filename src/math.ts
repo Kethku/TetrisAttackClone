@@ -1,4 +1,22 @@
 export class Vector {
+  static zero = new Vector(0, 0, 0);
+  static one = new Vector(1, 1, 1);
+  static half = new Vector(0.5, 0.5, 0.5);
+  static center = Vector.half;
+  static topLeft = new Vector(0, 1);
+  static topRight = new Vector(1, 1);
+  static bottomRight = new Vector(1, 0);
+  static bottomLeft = Vector.zero;
+
+  static down = new Vector(0, -1);
+  static up = new Vector(0, 1);
+  static right = new Vector(1, 0);
+  static left = new Vector(-1, 0);
+
+  public x: number;
+  public y: number;
+  public z: number;
+
   constructor(x, y, z = 0) {
     this.x = x;
     this.y = y;
@@ -29,15 +47,15 @@ export class Vector {
     return this.y;
   }
 
-  withX(x) {
+  withX(x: number) {
     return new Vector(x, this.y, this.z);
   }
 
-  withY(y) {
+  withY(y: number) {
     return new Vector(this.x, y, this.z);
   }
 
-  withZ(z) {
+  withZ(z: number) {
     return new Vector(this.x, this.y, z);
   }
 
@@ -45,27 +63,27 @@ export class Vector {
     return new Vector(this.x, this.y, this.z);
   }
 
-  distance(other) {
+  distance(other: Vector) {
     return this.subtract(other).length;
   }
 
-  add(other) {
+  add(other: Vector) {
     return new Vector(this.x + other.x, this.y + other.y, this.z + other.z);
   }
 
-  subtract(other) {
+  subtract(other: Vector) {
     return new Vector(this.x - other.x, this.y - other.y, this.z - other.z);
   }
 
-  multiply(scalar) {
+  multiply(scalar: number) {
     return new Vector(this.x * scalar, this.y * scalar, this.z * scalar);
   }
 
-  multiplyParts(other) {
+  multiplyParts(other: Vector) {
     return new Vector(this.x * other.x, this.y * other.y, this.z * other.z);
   }
 
-  divide(scalar) {
+  divide(scalar: number) {
     return new Vector(this.x / scalar, this.y / scalar, this.z / scalar);
   }
 
@@ -81,49 +99,40 @@ export class Vector {
     return new Vector(Math.ceil(this.x), Math.ceil(this.y), Math.ceil(this.z));
   }
 
-  within(center, dimensions) {
+  within(center: Vector, dimensions: Vector) {
     let halfWidth = dimensions.width / 2;
     let halfHeight = dimensions.height / 2;
     return this.x >= center.x - halfWidth && this.x <= center.x + halfWidth &&
            this.y >= center.y - halfHeight && this.y <= center.y + halfHeight;
   }
 
-  adjacentTo(other) {
+  adjacentTo(other: Vector) {
     return (Math.abs(this.x - other.x) == 1 &&
             this.y - other.y == 0) ||
            (Math.abs(this.y - other.y) == 1 &&
             this.x - other.x == 0);
   }
 
-  equals(other) {
+  equals(other: Vector) {
     return this.x === other.x && this.y === other.y && this.z === other.z;
   }
 }
 
-Vector.zero = new Vector(0, 0, 0);
-Vector.one = new Vector(1, 1, 1);
-Vector.half = new Vector(0.5, 0.5, 0.5);
-Vector.center = Vector.half;
-Vector.topLeft = new Vector(0, 1);
-Vector.topRight = new Vector(1, 1);
-Vector.bottomRight = new Vector(1, 0);
-Vector.bottomLeft = Vector.zero;
-
-Vector.down = new Vector(0, -1);
-Vector.up = new Vector(0, 1);
-Vector.right = new Vector(1, 0);
-Vector.left = new Vector(-1, 0);
-
 export class Color {
-  constructor(r, g, b, a = 1) {
+  static white = new Color(1, 1, 1, 1);
+  static gray = new Color(0.5, 0.5, 0.5, 1);
+  static black = new Color(0, 0, 0, 1);
+  static clear = new Color(0, 0, 0, 0);
+
+  public r: number;
+  public g: number;
+  public b: number;
+  public a: number;
+
+  constructor(r: number, g: number, b: number, a = 1) {
     this.r = r;
     this.g = g;
     this.b = b;
     this.a = a;
   }
 }
-
-Color.white = new Color(1, 1, 1, 1);
-Color.gray = new Color(0.5, 0.5, 0.5, 1);
-Color.black = new Color(0, 0, 0, 1);
-Color.clear = new Color(0, 0, 0, 0);

@@ -1,5 +1,5 @@
 import { Setup, Update } from "./events";
-import { stopClock, resetClock } from "./stopClock";
+import { stopClock } from "./stopClock";
 import { gridBlockDimensions, blockWidth, setBlock } from "./grid";
 import { matches } from "./match";
 import { Block } from "./block";

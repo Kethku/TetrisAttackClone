@@ -2,54 +2,51 @@ import { Vector, Color } from "./math";
 import { image } from "./graphics";
 import { touchPosition, touchDown, touchStarted } from "./touch";
 import { getBlock, setBlock, clearSlot, gridToScreen, gridCenter, gridDimensions, gridBlockDimensions, blockWidth } from "./grid";
-import { intentionalAdvance, blockPixelAdvancement, previousFilledY } from "./advance";
+import { intentionalAdvance } from "./advance";
 import { clearingTime } from "./match";
 import { blockImages } from "./images";
 
-const pickingUpFrameLength = 5;
 const pickedUpScale = 1.2;
 const maxDragVelocity = 0.9;
 const scaleVelocity = 0.08;
 const settleVelocity = 0.7;
-const swapFrameLength = 30;
-const rotateSpeed = 0.3;
 
 export const fallSpeed = 0.3;
 
-export const type = {
-  WOOD: "Wood",
-  ICE: "Ice",
-  STONE: "Stone",
-  LEAF: "Leaf",
-  LAVA: "Lava",
-  GOLD: "Gold",
-  BANG: "Bang",
-  GARBAGE: "Garbage"
-};
+export enum BlockType {
+  Wood = "Wood",
+  Ice = "Ice",
+  Stone = "Stone",
+  Leaf = "Leaf",
+  Lava = "Lava",
+  Gold = "Gold",
+  Bang = "Bang",
+  Garbage = "Garbage"
+}
 
 export const standardBlocks = [
-  type.WOOD,
-  type.ICE,
-  type.STONE,
-  type.LEAF,
-  type.LAVA,
-  type.GOLD
+  BlockType.Wood,
+  BlockType.Ice,
+  BlockType.Stone,
+  BlockType.Leaf,
+  BlockType.Lava,
+  BlockType.Gold
 ];
 
-export const state = {
-  WAITING: "Waiting",
-  SPAWNING: "Spawning",
-  DRAGGING: "Dragging",
-  FALLING: "Falling",
-  MATCHED: "Matched",
-  CLEARING: "Clearing",
-  CLEARED: "Cleared",
+export enum BlockState {
+  Waiting,
+  Spawning,
+  Dragging,
+  Falling,
+  Matched,
+  Clearing,
+  Cleared
 };
 
 export const volatileStates = [
-  state.MATCHED,
-  state.CLEARING,
-  state.CLEARED
+  BlockState.Matched,
+  BlockState.Clearing,
+  BlockState.Cleared
 ];
 
 export let heldBlock = null;
@@ -58,48 +55,57 @@ function randomType() {
   return standardBlocks[Math.floor(Math.random() * standardBlocks.length)];
 }
 
-export function deleteBlock(block) {
+export function deleteBlock(block: Block) {
   clearSlot(block.gridSlot);
   dropBlock(block);
 }
 
-export function dropBlock(block) {
+export function dropBlock(block: Block) {
   if (heldBlock === block) heldBlock = null;
 }
 
 export class Block {
-  constructor(gridSlot) {
+  public type: BlockType;
+  public gridSlot: Vector;
+  public gridPosition: Vector;
+  public state: BlockState;
+  public scale: number;
+
+  clearTimer: number;
+  dragOffset: Vector;
+
+  constructor(gridSlot: Vector) {
     this.type = randomType();
     this.gridSlot = gridSlot;
     this.gridPosition = gridSlot.clone();
-    this.state = state.SPAWNING;
+    this.state = BlockState.Spawning;
     this.scale = 1;
   }
 
-  overlappingSlots() {
-    return [ this.gridSlot ];
+  * overlappingSlots() {
+    yield this.gridSlot;
   }
 
-  calculateColor(centerY) {
-    if (this.state === state.MATCHED) {
+  calculateColor(centerY: number) {
+    if (this.state === BlockState.Matched) {
       return new Color(1.5, 1.5, 1.5, 1);
-    } else if (this.state === state.CLEARING) {
+    } else if (this.state === BlockState.Clearing) {
       let percentageDone = this.clearTimer / clearingTime;
       return new Color(1, 1, 1, 1 - percentageDone);
-    } else if (this.state === state.CLEARED) {
+    } else if (this.state === BlockState.Cleared) {
       return Color.clear;
-    } else if (this.state === state.SPAWNING) {
+    } else if (this.state === BlockState.Spawning) {
       let gridBottom = gridCenter.y - gridDimensions.height / 2;
       let blockBottom = centerY - blockWidth / 2;
       let distanceFromBottom = blockBottom - gridBottom;
 
       if (distanceFromBottom >= 0) {
-        if (this.state === state.SPAWNING) {
-          this.state = state.WAITING;
+        if (this.state === BlockState.Spawning) {
+          this.state = BlockState.Waiting;
         }
-        return 1;
+        return Color.white;
       }
-      if (distanceFromBottom < -blockWidth) return 0;
+      if (distanceFromBottom < -blockWidth) return Color.black;
 
       return new Color(1, 1, 1, (distanceFromBottom + blockWidth) / (blockWidth * 2));
     } else {
@@ -108,9 +114,9 @@ export class Block {
   }
 
   animateBlockSize() {
-    if (this.state === state.CLEARING) {
+    if (this.state === BlockState.Clearing) {
       this.scale += 0.01;
-    } else if (this.state === state.DRAGGING) {
+    } else if (this.state === BlockState.Dragging) {
       if (this.scale < pickedUpScale) {
         this.scale += scaleVelocity;
       } else {
@@ -125,12 +131,12 @@ export class Block {
     }
   }
 
-  handleDragging(center, dimensions) {
+  handleDragging(center: Vector, dimensions: Vector) {
     if (touchDown) {
       if (heldBlock == null) {
         // Start Dragging
-        if (this.state === state.WAITING && touchPosition.within(center, dimensions) && touchStarted) {
-          this.state = state.DRAGGING;
+        if (this.state === BlockState.Waiting && touchPosition.within(center, dimensions) && touchStarted) {
+          this.state = BlockState.Dragging;
           this.dragOffset = touchPosition.subtract(center);
           heldBlock = this;
         }
@@ -151,7 +157,7 @@ export class Block {
         // Handle Boundaries
         if (this.gridSlot.x > 0) {
           let leftBlock = getBlock(this.gridSlot.withX(this.gridSlot.x - 1));
-          if (leftBlock && (leftBlock.state !== state.WAITING || leftBlock.type === type.GARBAGE)) {
+          if (leftBlock && (leftBlock.state !== BlockState.Waiting || leftBlock.type === BlockType.Garbage)) {
             if (this.gridPosition.x < this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
             }
@@ -160,7 +166,7 @@ export class Block {
 
         if (this.gridSlot.x < 5) {
           let rightBlock = getBlock(this.gridSlot.withX(this.gridSlot.x + 1));
-          if (rightBlock && (rightBlock.state !== state.WAITING || rightBlock.type === type.GARBAGE)) {
+          if (rightBlock && (rightBlock.state !== BlockState.Waiting || rightBlock.type === BlockType.Garbage)) {
             if (this.gridPosition.x > this.gridSlot.x) {
               this.gridPosition.x = this.gridSlot.x;
             }
@@ -184,36 +190,36 @@ export class Block {
           }
         }
       }
-    } else if (this.state === state.DRAGGING) {
+    } else if (this.state === BlockState.Dragging) {
       // Stop Dragging
-      this.state = state.WAITING;
+      this.state = BlockState.Waiting;
       heldBlock = null;
     }
 
-    if (this.state !== state.DRAGGING) {
+    if (this.state !== BlockState.Dragging) {
       // Bounced Back to Grid
       this.gridPosition.x += (this.gridSlot.x - this.gridPosition.x) * settleVelocity;
     }
   }
 
   handleFalling() {
-    if (this.state === state.SPAWNING ||
-        this.state === state.MATCHED ||
-        this.state === state.CLEARING ||
-        this.state === state.CLEARED) {
+    if (this.state === BlockState.Spawning ||
+        this.state === BlockState.Matched ||
+        this.state === BlockState.Clearing ||
+        this.state === BlockState.Cleared) {
       return;
     }
 
     if (!getBlock(this.gridSlot.withY(this.gridSlot.y + 1))) {
-      this.state = state.FALLING;
+      this.state = BlockState.Falling;
       if (heldBlock === this) heldBlock = null;
     }
 
-    if (this.state === state.FALLING) {
+    if (this.state === BlockState.Falling) {
       this.gridPosition.y += fallSpeed;
       if (this.gridPosition.y > this.gridSlot.y && getBlock(this.gridSlot.withY(this.gridSlot.y + 1))) {
         this.gridPosition.y = this.gridSlot.y;
-        this.state = state.WAITING;
+        this.state = BlockState.Waiting;
       } else {
         let previousSlot = this.gridSlot.clone();
         this.gridSlot.y = Math.ceil(this.gridPosition.y);
@@ -226,13 +232,12 @@ export class Block {
   }
 
   handleClearAnimation() {
-    if (this.state === state.CLEARING) {
+    if (this.state === BlockState.Clearing) {
       if (!this.clearTimer) this.clearTimer = 0;
       this.clearTimer++;
 
-      let percentDone = this.clearTimer / clearingTime;
       if (this.clearTimer >= clearingTime) {
-        this.state = state.CLEARED;
+        this.state = BlockState.Cleared;
       }
     }
   }
@@ -248,21 +253,21 @@ export class Block {
     this.animateBlockSize();
     this.handleClearAnimation();
 
-    if (this.state === state.SPAWNING &&
+    if (this.state === BlockState.Spawning &&
         touchPosition.within(position, dimensions) &&
         touchStarted) {
       intentionalAdvance();
     }
   }
 
-  render(texture) {
+  render() {
     let { position, dimensions } = gridToScreen({
       position: this.gridPosition.add(Vector.half),
       dimensions: Vector.one
     });
 
     let tint = this.calculateColor(position.y);
-    if (this.state === state.DRAGGING || this.state === state.CLEARING) {
+    if (this.state === BlockState.Dragging || this.state === BlockState.Clearing) {
       position = position.withZ(10);
     }
 
@@ -271,7 +276,7 @@ export class Block {
 
     if (shadowOffset >= 0.1) {
       image({
-        imageUrl: texture || blockImages[this.type],
+        imageUrl: blockImages[this.type],
         position: position.add(new Vector(shadowOffset, -shadowOffset))
                           .withZ(shadowOffset),
         dimensions,
@@ -280,7 +285,7 @@ export class Block {
     }
 
     image({
-      imageUrl: texture || blockImages[this.type],
+      imageUrl: blockImages[this.type],
       position: position.withZ(position.z + shadowOffset),
       dimensions: heldDimensions,
       tint

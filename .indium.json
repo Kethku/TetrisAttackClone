@@ -1,0 +1,9 @@
+{
+  "configurations": [
+    {
+      "name": "Client",
+      "type": "chrome",
+      "url": "localhost:8080/index.html"
+    }
+  ]
+}

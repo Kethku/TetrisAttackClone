@@ -1,15 +1,14 @@
 import { Update } from "./events";
-import { previousFilledY, blockPixelAdvancement } from "./advance";
-import { gridBlockDimensions, gridToScreen, gridCenter, gridDimensions, blockWidth, getBlock, clearSlot, setBlock } from "./grid";
+import { previousFilledY } from "./advance";
+import { gridBlockDimensions, gridToScreen, blockWidth, getBlock, clearSlot, setBlock } from "./grid";
 import { garbageImages } from "./images";
 import { image, shake } from "./graphics";
-import { type, state, fallSpeed } from "./block";
+import { BlockType, BlockState, fallSpeed } from "./block";
 import { Vector } from "./math";
-import { EventManager1 } from "./eventManager";
 
 export const garbageBlocks = new Set();
 
-function singleRowGarbageTexture(width) {
+function singleRowGarbageTexture(width: number) {
   switch (width) {
   case 3:
     return garbageImages.ThreeWide;
@@ -25,13 +24,18 @@ function singleRowGarbageTexture(width) {
 }
 
 export class Garbage {
-  constructor(left, gridDimensions) {
-    this.gridSlot = new Vector(left, previousFilledY - gridBlockDimensions.height - gridDimensions.height);
+  public gridSlot: Vector;
+  public gridPosition: Vector;
+  public gridDimensions: Vector;
+  public type: BlockType;
+  public state: BlockState;
+
+  constructor(gridSlot: Vector, gridDimensions: Vector) {
+    this.gridSlot = gridSlot;
     this.gridPosition = this.gridSlot.clone();
     this.gridDimensions = gridDimensions;
-    this.type = type.GARBAGE;
-    this.state = state.FALLING;
-    garbageBlocks.add(this);
+    this.type = BlockType.Garbage;
+    this.state = BlockState.Falling;
   }
 
   * overlappingSlots() {
@@ -53,7 +57,7 @@ export class Garbage {
     return gapBelow;
   }
 
-  adjacentTo(slot) {
+  adjacentTo(slot: Vector) {
     for (let overlappingSlot of this.overlappingSlots()) {
       if (slot.adjacentTo(overlappingSlot)) return true;
     }
@@ -61,22 +65,19 @@ export class Garbage {
   }
 
   update() {
-    if (this.state === state.CLEARING) return;
+    if (this.state === BlockState.Clearing) return;
 
-    if (this.state === state.WAITING && this.gapBelow()) {
-      this.state = state.FALLING;
+    if (this.state === BlockState.Waiting && this.gapBelow()) {
+      this.state = BlockState.Falling;
     }
 
-    if (this.state === state.FALLING) {
+    if (this.state === BlockState.Falling) {
       this.gridPosition.y += fallSpeed;
       if (this.gridPosition.y > this.gridSlot.y && !this.gapBelow()) {
         this.gridPosition.y = this.gridSlot.y;
-        if (this.state !== state.WAITING) {
-          shake();
-          this.state = state.WAITING;
-        }
+        shake();
+        this.state = BlockState.Waiting;
       } else {
-        let previousSlot = this.gridSlot.clone();
         let newY = Math.ceil(this.gridPosition.y);
         if (newY != this.gridSlot.y) {
           for (let slot of this.overlappingSlots()) {
@@ -95,6 +96,7 @@ export class Garbage {
         .withZ(-0.1),
       dimensions: this.gridDimensions
     });
+
     for (let i = 0; i < this.gridDimensions.height; i++) {
       image({
         imageUrl: singleRowGarbageTexture(this.gridDimensions.width),
@@ -107,12 +109,22 @@ export class Garbage {
 }
 
 Update.Subscribe(() => {
+  let gridTop = previousFilledY - gridBlockDimensions.height;
+
   if (Math.random() < 0.002) {
-    setBlock(new Garbage(0, new Vector(6, Math.floor(Math.pow(Math.random(), 3) * 3))));
+    let height = Math.floor(Math.pow(Math.random(), 3) * 3);
+    let top = gridTop + height;
+    let newGarbage = new Garbage(new Vector(0, top), new Vector(6, height));
+    setBlock(newGarbage);
+    garbageBlocks.add(newGarbage);
   }
 
   if (Math.random() < 0.002) {
+    let top = gridTop;
     let width = Math.floor(Math.random() * 3) + 3;
-    setBlock(new Garbage(Math.floor(Math.random() * (6 - width)), new Vector(width, 1)));
+    let left = Math.floor(Math.random() * (6 - width));
+    let newGarbage = new Garbage(new Vector(left, top), new Vector(width, 1));
+    setBlock(newGarbage);
+    garbageBlocks.add(newGarbage);
   }
 });

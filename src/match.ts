@@ -1,5 +1,5 @@
 import { Update } from "./events";
-import { state, type, dropBlock, deleteBlock } from "./block";
+import { Block, BlockState, BlockType, dropBlock, deleteBlock } from "./block";
 import { getBlock, gridBlockDimensions } from "./grid";
 import { previousFilledY } from "./advance";
 import { Vector } from "./math";
@@ -11,16 +11,19 @@ export const continueClearTime = 5;
 
 export const matches = new Set();
 
-export const MatchStarted = new EventManager1();
-export const MatchCompleted = new EventManager1();
+export const MatchStarted = new EventManager1<Block[]>();
+export const MatchCompleted = new EventManager1<Block[]>();
 
 class Match {
-  constructor(matchBlocks) {
+  public blocks: Block[];
+  public timer: number;
+
+  constructor(matchBlocks: Block[]) {
     this.blocks = matchBlocks;
     this.timer = 0;
 
     for (let block of this.blocks) {
-      block.state = state.MATCHED;
+      block.state = BlockState.Matched;
       dropBlock(block);
     }
   }
@@ -31,11 +34,11 @@ class Match {
     } else {
       let anyClearing = false;
       for (let block of this.blocks) {
-        if (block.state === state.MATCHED) {
-          block.state = state.CLEARING;
+        if (block.state === BlockState.Matched) {
+          block.state = BlockState.Clearing;
           anyClearing = true;
           break;
-        } else if (block.state === state.CLEARING) {
+        } else if (block.state === BlockState.Clearing) {
           anyClearing = true;
           if (block.clearTimer > continueClearTime) {
             continue;
@@ -47,7 +50,7 @@ class Match {
       if (!anyClearing) {
         MatchCompleted.Publish(Array.from(this.blocks));
         for (let block of this.blocks) {
-          block.state = state.CLEARED;
+          block.state = BlockState.Cleared;
           deleteBlock(block);
         }
         return true;
@@ -58,14 +61,14 @@ class Match {
   }
 }
 
-function separateMatches(matchBlocks) {
+function separateMatches(matchBlocks: Set<Block>) {
   let groups = [];
   while (matchBlocks.size != 0) {
     let seed = matchBlocks.values().next().value;
-    let group = new Set();
+    let group = new Set<Block>();
     group.add(seed);
 
-    let addedBlockToGroup;
+    let addedBlockToGroup: boolean;
     do {
       addedBlockToGroup = false;
 
@@ -91,11 +94,11 @@ function separateMatches(matchBlocks) {
 }
 
 export function findNewMatches() {
-  let matchBlocks = new Set();
+  let matchBlocks = new Set<Block>();
   let currentMatch = [];
   let currentBlockType = null;
 
-  function breakMatch(nextBlock) {
+  function breakMatch(nextBlock: Block = undefined) {
     if (currentMatch.length >= 3) {
       for (let block of currentMatch) {
         matchBlocks.add(block);
@@ -110,8 +113,8 @@ export function findNewMatches() {
     }
   }
 
-  function processBlock(block) {
-    if (!block || (block.state !== state.WAITING && block.state !== state.DRAGGING) || block.type === type.GARBAGE) {
+  function processBlock(block: Block) {
+    if (!block || (block.state !== BlockState.Waiting && block.state !== BlockState.Dragging) || block.type === BlockType.Garbage) {
       breakMatch();
       return;
     }

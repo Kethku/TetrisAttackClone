@@ -2,10 +2,10 @@ import { Vector, Color } from "./math";
 import { Update, Draw } from "./events";
 import { screenSize, Resized } from "./webgl";
 import { image } from "./graphics";
-import { deleteBlock, heldBlock, state, type, Block, standardBlocks } from "./block";
-import { matches } from "./match";
+import { standardBlocks, BlockType, BlockState } from "./block";
 import { blockImages } from "./images";
 import { blockPixelAdvancement } from "./advance";
+import { Common } from "./utils";
 
 const startingMargin = 0.05;
 export const gridBlockDimensions = new Vector(6, 12);
@@ -16,11 +16,19 @@ export let blockWidth = 0;
 
 let blocks = {};
 
+export interface GridElement {
+  gridSlot: Vector;
+  overlappingSlots: () => IterableIterator<Vector>;
+  type: BlockType;
+  state: BlockState;
+  render: () => void;
+}
+
 ////////////////////
 // Grid Utilities //
 ////////////////////
 
-export function getBlock(gridSlot) {
+export function getBlock(gridSlot: Vector) {
   let row = blocks[gridSlot.y];
   if (row) {
     return row[gridSlot.x];
@@ -28,9 +36,7 @@ export function getBlock(gridSlot) {
   return undefined;
 }
 
-export function setBlock(block) {
-  let topLeft = block.gridSlot;
-
+export function setBlock(block: GridElement) {
   for (let overlappingSlot of block.overlappingSlots()) {
     if (!blocks[overlappingSlot.y]) {
       blocks[overlappingSlot.y] = [];
@@ -39,7 +45,7 @@ export function setBlock(block) {
   }
 }
 
-export function clearSlot(position) {
+export function clearSlot(position: Vector) {
   if (blocks[position.y]) {
     delete blocks[position.y][position.x];
   }
@@ -48,7 +54,7 @@ export function clearSlot(position) {
 export function* allBlocks() {
   let seenBlocks = new Set();
 
-  let rowYValues = Object.keys(blocks);
+  let rowYValues = Object.keys(blocks).map(yValue => Number(yValue));
   let topRow = Math.min(...rowYValues);
   let bottomRow = Math.max(...rowYValues);
   for (let y = bottomRow + 1; y >= topRow; y--) {
@@ -64,21 +70,25 @@ export function* allBlocks() {
   }
 }
 
-export function gridToScreen({ position, dimensions }) {
-  let result = {};
+interface Location {
+  position: Vector,
+  dimensions: Vector
+};
+export function gridToScreen<T extends Partial<Location>>(location: T) {
+  let result = {} as Common<T, Location>;
 
-  if (position) {
+  if ("position" in location) {
     let blocksTopLeft = new Vector(
       gridCenter.x - gridDimensions.width / 2,
       gridCenter.y - gridDimensions.height / 2 + blockPixelAdvancement);
 
     result.position = blocksTopLeft.add(
-      position.multiply(blockWidth)
+      location.position.multiply(blockWidth)
         .multiplyParts(new Vector(1, -1)));
   }
 
-  if (dimensions) {
-    result.dimensions = dimensions.multiply(blockWidth);
+  if ("dimensions" in location) {
+    result.dimensions = location.dimensions.multiply(blockWidth);
   }
 
   return result;

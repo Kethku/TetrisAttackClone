@@ -1,18 +1,18 @@
-import { getBlock, gridBlockDimensions } from "./grid";
-import { state, type, volatileStates } from "./block";
-import { MatchStarted, MatchCompleted, findNewMatches } from "./match";
+import { getBlock } from "./grid";
+import { Block, BlockState, BlockType, volatileStates } from "./block";
+import { MatchStarted, MatchCompleted } from "./match";
 import { Update } from "./events";
 import { previousFilledY } from "./advance";
 import { ClearAnimationStarted } from "./clearAnimation";
 
 import { EventManager1, EventManager2 } from "./eventManager";
 
-export const combos = new Set();
+export const combos = new Set<Combo>();
 
-export const ComboExtended = new EventManager1();
-export const ComboFinished = new EventManager1();
+export const ComboExtended = new EventManager2<Block[], number>();
+export const ComboFinished = new EventManager1<number>();
 
-function emptySlotBelow(block) {
+function emptySlotBelow(block: Block) {
   for (let y = block.gridSlot.y + 1; y <= previousFilledY; y++) {
     let possiblyEmptyBlock = getBlock(block.gridSlot.withY(y));
     if (!possiblyEmptyBlock || volatileStates.includes(possiblyEmptyBlock.state)) {
@@ -23,20 +23,24 @@ function emptySlotBelow(block) {
 }
 
 export class Combo {
-  constructor(matchedBlocks) {
+  public cascades: number;
+  public trackedBlocks: Set<Block>;
+  public matchedBlocks: Set<Block>;
+
+  constructor(matchedBlocks: Block[]) {
     this.cascades = 0;
     this.trackedBlocks = new Set();
     this.matchedBlocks = new Set();
     matchedBlocks.forEach(matchedBlock => this.matchedBlocks.add(matchedBlock));
   }
 
-  processMatchedBlocks(matchedBlocks) {
+  processMatchedBlocks(matchedBlocks: Block[]) {
     for (let matchedBlock of matchedBlocks) {
       this.matchedBlocks.add(matchedBlock);
       for (let y = matchedBlock.gridSlot.y - 1; y > 0; y--) {
         let fallingBlock = getBlock(matchedBlock.gridSlot.withY(y));
         if (!fallingBlock) break;
-        if (fallingBlock.state === state.WAITING) {
+        if (fallingBlock.state === BlockState.Waiting) {
           this.trackedBlocks.add(fallingBlock);
         }
       }
@@ -46,18 +50,18 @@ export class Combo {
 
   update() {
     for (let trackedBlock of this.trackedBlocks) {
-      if (trackedBlock.state !== state.SPAWNING &&
-          trackedBlock.state !== state.FALLING &&
-          trackedBlock.state !== state.MATCHED &&
-          trackedBlock.state !== state.CLEARING &&
-          (trackedBlock.type === type.GARBAGE ||
+      if (trackedBlock.state !== BlockState.Spawning &&
+          trackedBlock.state !== BlockState.Falling &&
+          trackedBlock.state !== BlockState.Matched &&
+          trackedBlock.state !== BlockState.Clearing &&
+          (trackedBlock.type === BlockType.Garbage ||
            !emptySlotBelow(trackedBlock))) {
         this.trackedBlocks.delete(trackedBlock);
       }
     }
 
     for (let matchedBlock of this.matchedBlocks) {
-      if (matchedBlock.state !== state.CLEARED) {
+      if (matchedBlock.state !== BlockState.Cleared) {
         return false;
       }
     }
@@ -105,7 +109,7 @@ ClearAnimationStarted.Subscribe(({ triggeringBlocks, spawnedBlocks }) => {
     for (let block of triggeringBlocks) {
       if (combo.matchedBlocks.has(block)) {
         for (let spawnedBlock of spawnedBlocks) {
-          combo.trackedBlocks.add(spawnedBlock.block);
+          combo.trackedBlocks.add(spawnedBlock);
         }
         break;
       }
@@ -125,4 +129,4 @@ function update() {
 Update.Subscribe(update);
 
 ComboFinished.Subscribe(cascades => console.log((cascades + 1) + " Match Combo!"));
-ComboExtended.Subscribe((_, cascades) => console.log("Combo Extended!"));
+ComboExtended.Subscribe(() => console.log("Combo Extended!"));

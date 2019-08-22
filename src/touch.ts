@@ -8,9 +8,9 @@ export let touchDown = false;
 export let touchStarted = false;
 export let touchReleased = false;
 
-function handlePointerEvent(e) {
-  if (!touchDown || touchId == e.touchId) {
-    touchId = e.touchId;
+function handlePointerEvent(e: PointerEvent) {
+  if (!touchDown || touchId == e.pointerId) {
+    touchId = e.pointerId;
     touchPosition = new Vector(e.clientX, screenSize.height - e.clientY);
     touchDown = e.pressure > 0;
   }

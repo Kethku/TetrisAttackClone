@@ -2,7 +2,16 @@ import { Update } from "./events";
 import { imagesToDraw } from "./webgl";
 import { Color, Vector } from "./math";
 
-export function image({ imageUrl, position, dimensions, rotation = 0, tint = Color.white, center = Vector.half }) {
+interface ImageArguments {
+  imageUrl: string,
+  position: Vector,
+  dimensions: Vector,
+  rotation?: number,
+  tint?: Color,
+  center?: Vector
+}
+
+export function image({ imageUrl, position, dimensions, rotation = 0, tint = Color.white, center = Vector.half }: ImageArguments) {
   let shakenPosition = position.withY(position.y + currentShake);
   imagesToDraw.push({ imageUrl, position: shakenPosition, dimensions, rotation, tint, center });
 }

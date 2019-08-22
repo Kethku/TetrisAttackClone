@@ -4,7 +4,7 @@ declare namespace TWGL {
   function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement, multiplier?: number): boolean;
   function setBuffersAndAttributes(gl: WebGLRenderingContext, setters: ProgramInfo | { [id: string]: (data: any) => void }, buffers: BufferInfo | VertexArrayInfo): void;
   function setUniforms(setters: ProgramInfo | { [id: string]: (data: any) => void }, values: { [id: string]: any }): void;
-  function drawBufferInfo(gl: WebGLRenderingContext, type: number, bufferInfo: BufferInfo | VertexArrayInfo, count?: number, offset?: number): void;
+  function drawBufferInfo(gl: WebGLRenderingContext, bufferInfo: BufferInfo | VertexArrayInfo, type: number, count?: number, offset?: number): void;
   function createTexture(gl: WebGLRenderingContext, options: TextureOptions, callback?: TextureReadyCallback): WebGLTexture;
   function createTextures(gl: WebGLRenderingContext, options: { [id: string]: TextureOptions }, callback?: TexturesReadyCallback): { [id: string]: WebGLTexture };
   function createFrameBufferInfo(gl: WebGLRenderingContext, attachments?: AttachmentOptions[], width?: number, height?: number): FramebufferInfo;

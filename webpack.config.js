@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
   mode: 'development',
-  entry: { main: './src/client.js' },
+  entry: { main: './src/client.ts' },
   output: {
     filename: 'client.js',
     path: path.resolve(__dirname, 'dist/'),

@@ -1,10 +1,10 @@
 import { Update, Draw } from "./events";
 import { EventManager1 } from "./eventManager";
-import { Block, state } from "./block";
-import { setBlock, gridToScreen } from "./grid";
+import { Block, BlockState, BlockType } from "./block";
+import { setBlock, gridToScreen, GridElement } from "./grid";
 import { garbageImages } from "./images";
 import { MatchStarted } from "./match";
-import { garbageBlocks } from "./garbage";
+import { Garbage, garbageBlocks } from "./garbage";
 import { image } from "./graphics";
 import { Vector } from "./math";
 
@@ -19,38 +19,53 @@ export const ClearAnimationStarted = new EventManager1();
 export const GarbageBroken = new EventManager1();
 
 class ClearAnimation {
-  constructor(triggeringBlocks, garbageBlocks) {
+  public triggeringBlocks: Block[];
+  public garbageBlocks: Set<Garbage>;
+  public spawnedBlocks: GridElement[];
+
+  private timer: number;
+  private breakTimeStarted: number;
+  private coveredSlots: Map<string, Vector>;
+
+  constructor(triggeringBlocks: Block[], garbageBlocks: Set<Garbage>) {
     this.timer = 0;
     this.triggeringBlocks = triggeringBlocks;
     this.garbageBlocks = garbageBlocks;
-    this.coveredSlots = new Set();
+    this.coveredSlots = new Map();
     this.spawnedBlocks = [];
 
     for (let garbage of garbageBlocks) {
       for (let slot of garbage.overlappingSlots()) {
-        this.coveredSlots.add(slot);
-        this.spawnedBlocks.push({
-          visible: false,
-          block: new Block(slot)
-        });
+        this.coveredSlots.set(JSON.stringify(slot), slot);
       }
+
+      this.createSpawnedBlocks(garbage);
+    }
+  }
+
+  createSpawnedBlocks(garbage: Garbage) {
+    for (let x = garbage.gridSlot.x; x < garbage.gridSlot.x + garbage.gridDimensions.x; x++) {
+      let slot = new Vector(x, garbage.gridSlot.y + garbage.gridDimensions.y - 1);
+      this.spawnedBlocks.push(new Block(slot));
+    }
+
+    if (garbage.gridDimensions.y > 1) {
+      let dimensions = garbage.gridDimensions.withY(garbage.gridDimensions.height - 1);
+      this.spawnedBlocks.push(new Garbage(garbage.gridSlot, dimensions));
     }
   }
 
   update() {
     if (this.timer > clearDelay) {
       if ((this.timer - clearDelay) % blockClearDelay == 0) {
-        let anyHidden = false;
-        for (let spawnedBlock of this.spawnedBlocks) {
-          if (!spawnedBlock.visible) {
-            spawnedBlock.visible = true;
-            this.coveredSlots.delete(spawnedBlock.gridSlot);
-            anyHidden = true;
-            break;
-          }
+        let anyUncovered = false;
+        for (let coveredSlot of this.coveredSlots.values()) {
+          this.coveredSlots.delete(JSON.stringify(coveredSlot));
+          anyUncovered = true;
+          break;
         }
 
-        if (!anyHidden && !this.breakTimeStarted) {
+        if (!anyUncovered && !this.breakTimeStarted) {
           this.breakTimeStarted = this.timer;
         }
       }
@@ -60,8 +75,11 @@ class ClearAnimation {
         this.timer - this.breakTimeStarted > breakDelay) {
       clearAnimations.delete(this);
       for (let spawnedBlock of this.spawnedBlocks) {
-        setBlock(spawnedBlock.block);
-        spawnedBlock.block.state = state.WAITING;
+        setBlock(spawnedBlock);
+        if (spawnedBlock.type === BlockType.Garbage) {
+          garbageBlocks.add(spawnedBlock);
+        }
+        spawnedBlock.state = BlockState.Waiting;
       }
       ClearAnimationFinished.Publish(this);
     }
@@ -75,13 +93,13 @@ class ClearAnimation {
 
   render() {
     for (let spawnedBlock of this.spawnedBlocks) {
-      spawnedBlock.block.render();
+      spawnedBlock.render();
     }
 
-    for (let coveredSlot of this.coveredSlots) {
+    for (let coveredSlot of this.coveredSlots.values()) {
       let renderInfo = gridToScreen({
         position: coveredSlot,
-        dimensions: Vector.One
+        dimensions: Vector.one
       });
 
       image({
@@ -97,10 +115,10 @@ export function anyClearAnimations() {
   return clearAnimations.size != 0;
 }
 
-function breakBlocks(garbageBlocks, matchedBlocks) {
+function breakBlocks(garbageBlocks: Set<Garbage>, matchedBlocks: Block[]) {
   let clearAnimation = new ClearAnimation(matchedBlocks, garbageBlocks);
   for (let garbage of garbageBlocks) {
-    garbage.state = state.CLEARING;
+    garbage.state = BlockState.Clearing;
     GarbageBroken.Publish({
       garbage,
       matchedBlocks,
@@ -117,14 +135,14 @@ MatchStarted.Subscribe(matchedBlocks => {
     triggeringSlots.push(matchedBlock.gridSlot);
   }
 
-  let garbageToBreak = new Set();
+  let garbageToBreak = new Set<Garbage>();
 
-  let foundNewBrokenGarbage;
+  let foundNewBrokenGarbage: boolean;
   do {
     foundNewBrokenGarbage = false;
     for (let garbage of garbageBlocks) {
       if (garbageToBreak.has(garbage)) continue;
-      if (garbage.state == state.CLEARING) continue;
+      if (garbage.state == BlockState.Clearing) continue;
       for (let triggeringSlot of triggeringSlots) {
         if (garbage.adjacentTo(triggeringSlot)) {
           foundNewBrokenGarbage = true;

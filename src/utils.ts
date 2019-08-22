@@ -1,3 +1,7 @@
+export type Common<A, B> = {
+  [P in keyof A & keyof B]: A[P] | B[P]
+};
+
 export function spliceArray(dest: Uint16Array | Float32Array, offset: number, data: number[]) {
   for (let i = 0; i < data.length; i++) {
     dest[offset + i] = data[i];

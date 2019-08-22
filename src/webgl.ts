@@ -2,11 +2,11 @@ import * as twgl from "twgl.js";
 
 import { EventManager1 } from "./eventManager";
 import { spliceArray, spliceData } from "./utils";
-import { setupTextures } from "./imageMapUtils";
-import { Vector, Color } from "./math";
+import { setupTextures, TextureInfo } from "./imageMapUtils";
+import { Vector } from "./math";
 
-import vert from './shaders/vert.glsl';
-import frag from './shaders/frag.glsl';
+const vert: string = require('./shaders/vert.glsl').default;
+const frag: string = require('./shaders/frag.glsl').default;
 
 export let imagesToDraw = [];
 
@@ -32,9 +32,9 @@ let spriteArrays = {
   indices: {numComponents: 3, data: new Uint16Array(maxCount * 2), drawType: gl.DYNAMIC_DRAW}
 };
 let bufferInfo = twgl.createBufferInfoFromArrays(gl, spriteArrays);
-let textures;
+let textures: TextureInfo;
 
-export async function loadTextures(texturePaths) {
+export async function loadTextures(texturePaths: string[]) {
   textures = await setupTextures(gl, texturePaths);
   document.body.appendChild(textures.canvas);
   gl.enable(gl.BLEND);
@@ -65,7 +65,7 @@ resize();
 // Draw Calls //
 ////////////////
 export function drawToScreen() {
-  if (document.hasFocus()) {
+  if (document.hasFocus() || true) {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.viewport(0, 0, screenSize.x, screenSize.y);
