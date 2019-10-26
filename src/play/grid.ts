@@ -1,11 +1,12 @@
-import { Vector, Color } from "./math";
 import { Update, Draw } from "./events";
-import { screenSize, Resized } from "./webgl";
-import { image } from "./graphics";
-import { standardBlocks, BlockType, BlockState } from "./block";
-import { blockImages } from "./images";
-import { blockPixelAdvancement } from "./advance";
-import { Common } from "./utils";
+import { Vector, Color } from "../math";
+import { screenSize, Resized } from "../renderer/webgl";
+import { image } from "../renderer/graphics";
+import { standardBlocks, Block } from "./block";
+import { blockImages } from "../renderer/images";
+import { blockPixelAdvancement, getDangerColumns } from "./advance";
+import { Common } from "../utils";
+import {Garbage} from './garbage';
 
 const startingMargin = 0.05;
 export const gridBlockDimensions = new Vector(6, 12);
@@ -14,15 +15,9 @@ export let gridCenter = Vector.zero;
 export let gridDimensions = Vector.one;
 export let blockWidth = 0;
 
-let blocks = {};
+let blocks: { [xIndex: number]: GridElement[] } = {};
 
-export interface GridElement {
-  gridSlot: Vector;
-  overlappingSlots: () => IterableIterator<Vector>;
-  type: BlockType;
-  state: BlockState;
-  render: () => void;
-}
+export type GridElement = Block | Garbage;
 
 ////////////////////
 // Grid Utilities //
@@ -128,7 +123,7 @@ Update.Subscribe(() => {
 
 let background = standardBlocks[Math.floor(Math.random() * standardBlocks.length)];
 
-Draw.Subscribe(() => {
+Draw.Subscribe((frame) => {
   image({
     imageUrl: blockImages[background],
     position: gridCenter.withZ(-5),
@@ -136,7 +131,9 @@ Draw.Subscribe(() => {
     tint: new Color(0.5, 0.5, 0.5, 0.5)
   });
 
+  let dangerColumns = getDangerColumns();
+
   for (let block of allBlocks()) {
-    block.render();
+    block.render(frame, dangerColumns);
   }
 });

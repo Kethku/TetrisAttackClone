@@ -17,7 +17,7 @@ export class Vector {
   public y: number;
   public z: number;
 
-  constructor(x, y, z = 0) {
+  constructor(x: number, y: number, z = 0) {
     this.x = x;
     this.y = y;
     this.z = z;

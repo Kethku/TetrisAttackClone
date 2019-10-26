@@ -1,12 +1,12 @@
 import { Update } from "./events";
 import { previousFilledY } from "./advance";
 import { gridBlockDimensions, gridToScreen, blockWidth, getBlock, clearSlot, setBlock } from "./grid";
-import { garbageImages } from "./images";
-import { image, shake } from "./graphics";
+import { garbageImages } from "../renderer/images";
+import { image, shake } from "../renderer/graphics";
 import { BlockType, BlockState, fallSpeed } from "./block";
-import { Vector } from "./math";
+import { Vector } from "../math";
 
-export const garbageBlocks = new Set();
+export const garbageBlocks = new Set<Garbage>();
 
 function singleRowGarbageTexture(width: number) {
   switch (width) {
@@ -24,10 +24,10 @@ function singleRowGarbageTexture(width: number) {
 }
 
 export class Garbage {
+  public type: BlockType.Garbage;
   public gridSlot: Vector;
   public gridPosition: Vector;
   public gridDimensions: Vector;
-  public type: BlockType;
   public state: BlockState;
 
   constructor(gridSlot: Vector, gridDimensions: Vector) {

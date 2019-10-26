@@ -1,10 +1,10 @@
-import { Vector, Color } from "./math";
-import { image } from "./graphics";
-import { touchPosition, touchDown, touchStarted } from "./touch";
+import { Vector, Color } from "../math";
+import { image } from "../renderer/graphics";
+import { touchPosition, touchDown, touchStarted } from "../touch";
 import { getBlock, setBlock, clearSlot, gridToScreen, gridCenter, gridDimensions, gridBlockDimensions, blockWidth } from "./grid";
-import { intentionalAdvance } from "./advance";
+import { intentionalAdvance, isInLosingPosition } from "./advance";
 import { clearingTime } from "./match";
-import { blockImages } from "./images";
+import { blockImages } from "../renderer/images";
 
 const pickedUpScale = 1.2;
 const maxDragVelocity = 0.9;
@@ -14,23 +14,23 @@ const settleVelocity = 0.7;
 export const fallSpeed = 0.3;
 
 export enum BlockType {
-  Wood = "Wood",
-  Ice = "Ice",
-  Stone = "Stone",
+  Cloud = "Cloud",
+  Moon = "Moon",
   Leaf = "Leaf",
-  Lava = "Lava",
-  Gold = "Gold",
+  Rain = "Rain",
+  Stick = "Stick",
+  Sun = "Sun",
   Bang = "Bang",
   Garbage = "Garbage"
 }
 
 export const standardBlocks = [
-  BlockType.Wood,
-  BlockType.Ice,
-  BlockType.Stone,
+  BlockType.Cloud,
+  BlockType.Moon,
+  BlockType.Sun,
   BlockType.Leaf,
-  BlockType.Lava,
-  BlockType.Gold
+  BlockType.Rain,
+  BlockType.Stick
 ];
 
 export enum BlockState {
@@ -86,7 +86,7 @@ export class Block {
     yield this.gridSlot;
   }
 
-  calculateColor(centerY: number) {
+  calculateColor(centerY: number, frame: number, dangerColumns: Set<number>) {
     if (this.state === BlockState.Matched) {
       return new Color(1.5, 1.5, 1.5, 1);
     } else if (this.state === BlockState.Clearing) {
@@ -108,6 +108,11 @@ export class Block {
       if (distanceFromBottom < -blockWidth) return Color.black;
 
       return new Color(1, 1, 1, (distanceFromBottom + blockWidth) / (blockWidth * 2));
+    } else if (isInLosingPosition() && dangerColumns.has(this.gridSlot.x)) {
+      return Color.gray;
+    } else if (dangerColumns.has(this.gridSlot.x)) {
+      let gray = 1 + Math.sin(frame / 5) / 4;
+      return new Color(gray, gray, gray);
     } else {
       return Color.white;
     }
@@ -260,13 +265,13 @@ export class Block {
     }
   }
 
-  render() {
+  render(frame: number, dangerColumns: Set<number>) {
     let { position, dimensions } = gridToScreen({
       position: this.gridPosition.add(Vector.half),
       dimensions: Vector.one
     });
 
-    let tint = this.calculateColor(position.y);
+    let tint = this.calculateColor(position.y, frame, dangerColumns);
     if (this.state === BlockState.Dragging || this.state === BlockState.Clearing) {
       position = position.withZ(10);
     }

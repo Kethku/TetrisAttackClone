@@ -1,6 +1,6 @@
-import { Update } from "./events";
+import { Update } from "../events";
 import { imagesToDraw } from "./webgl";
-import { Color, Vector } from "./math";
+import { Color, Vector } from "../math";
 
 interface ImageArguments {
   imageUrl: string,

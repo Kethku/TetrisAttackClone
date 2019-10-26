@@ -1,20 +1,22 @@
+import { Update } from "./events";
 import { getBlock } from "./grid";
 import { Block, BlockState, BlockType, volatileStates } from "./block";
 import { MatchStarted, MatchCompleted } from "./match";
-import { Update } from "./events";
 import { previousFilledY } from "./advance";
 import { ClearAnimationStarted } from "./clearAnimation";
 
-import { EventManager1, EventManager2 } from "./eventManager";
+import { EventManager } from "../eventManager";
 
 export const combos = new Set<Combo>();
 
-export const ComboExtended = new EventManager2<Block[], number>();
-export const ComboFinished = new EventManager1<number>();
+export const ComboExtended = new EventManager<[Block[], number]>();
+export const ComboFinished = new EventManager<[number]>();
+
 
 function emptySlotBelow(block: Block) {
   for (let y = block.gridSlot.y + 1; y <= previousFilledY; y++) {
     let possiblyEmptyBlock = getBlock(block.gridSlot.withY(y));
+    
     if (!possiblyEmptyBlock || volatileStates.includes(possiblyEmptyBlock.state)) {
       return true;
     }
@@ -38,7 +40,7 @@ export class Combo {
     for (let matchedBlock of matchedBlocks) {
       this.matchedBlocks.add(matchedBlock);
       for (let y = matchedBlock.gridSlot.y - 1; y > 0; y--) {
-        let fallingBlock = getBlock(matchedBlock.gridSlot.withY(y));
+        let fallingBlock = getBlock(matchedBlock.gridSlot.withY(y)) as Block;
         if (!fallingBlock) break;
         if (fallingBlock.state === BlockState.Waiting) {
           this.trackedBlocks.add(fallingBlock);
@@ -109,7 +111,7 @@ ClearAnimationStarted.Subscribe(({ triggeringBlocks, spawnedBlocks }) => {
     for (let block of triggeringBlocks) {
       if (combo.matchedBlocks.has(block)) {
         for (let spawnedBlock of spawnedBlocks) {
-          combo.trackedBlocks.add(spawnedBlock);
+          combo.trackedBlocks.add(spawnedBlock as Block);
         }
         break;
       }

@@ -1,11 +1,11 @@
 export const blockImages = {
   "Bang": "./images/Bang.png",
-  "Wood": "./images/Wood.png",
-  "Ice": "./images/Ice.png",
-  "Stone": "./images/Stone.png",
+  "Cloud": "./images/Cloud.png",
   "Leaf": "./images/Leaf.png",
-  "Lava": "./images/Lava.png",
-  "Gold": "./images/Gold.png"
+  "Moon": "./images/Moon.png",
+  "Rain": "./images/Rain.png",
+  "Stick": "./images/Stick.png",
+  "Sun": "./images/Sun.png"
 };
 
 export const garbageImages = {
@@ -25,4 +25,10 @@ export const garbageImages = {
   "Clear": "./images/garbage/Clear.png"
 };
 
-export const imageURLs = Object.values(blockImages).concat(Object.values(garbageImages));
+export const Lose = "./images/Lose.png";
+export const LoseWidthOverHeight = 65 / 30;
+
+export const Win = "./images/Win.png";
+export const WinWidthOverHeight = 51 / 30;
+
+export const imageURLs = Object.values(blockImages).concat(Object.values(garbageImages)).concat([ Lose, Win ]);

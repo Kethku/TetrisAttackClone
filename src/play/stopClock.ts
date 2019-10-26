@@ -1,6 +1,6 @@
 import { MatchCompleted } from "./match";
 import { ComboFinished } from "./combo";
-import { Update } from "./events";
+import { Update } from "../events";
 
 export let stopClock = 0;
 

@@ -1,22 +1,26 @@
 import { Update, Draw } from "./events";
-import { EventManager1 } from "./eventManager";
+import { EventManager } from "../eventManager";
 import { Block, BlockState, BlockType } from "./block";
 import { setBlock, gridToScreen, GridElement } from "./grid";
-import { garbageImages } from "./images";
+import { garbageImages } from "../renderer/images";
 import { MatchStarted } from "./match";
 import { Garbage, garbageBlocks } from "./garbage";
-import { image } from "./graphics";
-import { Vector } from "./math";
+import { image } from "../renderer/graphics";
+import { Vector } from "../math";
 
 const clearDelay = 60;
 const blockClearDelay = 10;
 const breakDelay = 30;
 
-const clearAnimations = new Set();
+const clearAnimations = new Set<ClearAnimation>();
 
-export const ClearAnimationFinished = new EventManager1();
-export const ClearAnimationStarted = new EventManager1();
-export const GarbageBroken = new EventManager1();
+export const ClearAnimationFinished = new EventManager<[ClearAnimation]>();
+export const ClearAnimationStarted = new EventManager<[ClearAnimation]>();
+export const GarbageBroken = new EventManager<[{
+      garbage: Garbage,
+      matchedBlocks: Block[],
+      spawnedBlocks: GridElement[]
+    }]>();
 
 class ClearAnimation {
   public triggeringBlocks: Block[];
@@ -77,7 +81,7 @@ class ClearAnimation {
       for (let spawnedBlock of this.spawnedBlocks) {
         setBlock(spawnedBlock);
         if (spawnedBlock.type === BlockType.Garbage) {
-          garbageBlocks.add(spawnedBlock);
+          garbageBlocks.add(spawnedBlock as Garbage);
         }
         spawnedBlock.state = BlockState.Waiting;
       }
@@ -93,7 +97,7 @@ class ClearAnimation {
 
   render() {
     for (let spawnedBlock of this.spawnedBlocks) {
-      spawnedBlock.render();
+      spawnedBlock.render(0, new Set());
     }
 
     for (let coveredSlot of this.coveredSlots.values()) {

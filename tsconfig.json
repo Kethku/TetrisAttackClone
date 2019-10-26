@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "moduleResolution": "node",
+    "target": "es2017",
     "sourceMap": true,
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "jsx": "react"
   }
 }

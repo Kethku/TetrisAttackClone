@@ -1,5 +1,5 @@
-import { EventManager0, EventManager1 } from "./eventManager";
+import { EventManager } from "./eventManager";
 
-export const Setup = new EventManager0();
-export const Draw = new EventManager1();
-export const Update = new EventManager1();
+export const Setup = new EventManager<[], Promise<void> | void>();
+export const Draw = new EventManager<[number]>();
+export const Update = new EventManager<[number]>();

@@ -1,18 +1,18 @@
 import { Update } from "./events";
 import { Block, BlockState, BlockType, dropBlock, deleteBlock } from "./block";
-import { getBlock, gridBlockDimensions } from "./grid";
+import { GridElement, getBlock, gridBlockDimensions } from "./grid";
 import { previousFilledY } from "./advance";
-import { Vector } from "./math";
-import { EventManager1 } from "./eventManager";
+import { Vector } from "../math";
+import { EventManager } from "../eventManager";
 
 export const clearDelay = 15;
 export const clearingTime = 15;
 export const continueClearTime = 5;
 
-export const matches = new Set();
+export const matches = new Set<Match>();
 
-export const MatchStarted = new EventManager1<Block[]>();
-export const MatchCompleted = new EventManager1<Block[]>();
+export const MatchStarted = new EventManager<[Block[]]>();
+export const MatchCompleted = new EventManager<[Block[]]>();
 
 class Match {
   public blocks: Block[];
@@ -113,7 +113,7 @@ export function findNewMatches() {
     }
   }
 
-  function processBlock(block: Block) {
+  function processBlock(block: GridElement) {
     if (!block || (block.state !== BlockState.Waiting && block.state !== BlockState.Dragging) || block.type === BlockType.Garbage) {
       breakMatch();
       return;

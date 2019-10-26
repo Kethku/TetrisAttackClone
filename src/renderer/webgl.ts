@@ -1,12 +1,15 @@
 import * as twgl from "twgl.js";
 
-import { EventManager1 } from "./eventManager";
-import { spliceArray, spliceData } from "./utils";
+import { Setup, Draw } from "../events";
+import { EventManager } from "../eventManager";
+import { spliceArray, spliceData } from "../utils";
 import { setupTextures, TextureInfo } from "./imageMapUtils";
-import { Vector } from "./math";
+import { Vector } from "../math";
 
-const vert: string = require('./shaders/vert.glsl').default;
-const frag: string = require('./shaders/frag.glsl').default;
+import { imageURLs } from "./images";
+
+import vertex from './shaders/vert.glsl';
+import fragment from './shaders/frag.glsl';
 
 export let imagesToDraw = [];
 
@@ -17,7 +20,7 @@ export const canvas = document.createElement("canvas");
 canvas.setAttribute("touch-action", "none");
 document.body.appendChild(canvas);
 const gl = canvas.getContext("webgl", {alpha: false});
-let spriteProgram = twgl.createProgramInfo(gl, [vert, frag]);
+let spriteProgram = twgl.createProgramInfo(gl, [vertex, fragment]);
 gl.useProgram(spriteProgram.program);
 let maxCount = 800;
 let spriteArrays = {
@@ -34,19 +37,19 @@ let spriteArrays = {
 let bufferInfo = twgl.createBufferInfoFromArrays(gl, spriteArrays);
 let textures: TextureInfo;
 
-export async function loadTextures(texturePaths: string[]) {
-  textures = await setupTextures(gl, texturePaths);
+Setup.Subscribe(async () => {
+  textures = await setupTextures(gl, imageURLs);
   document.body.appendChild(textures.canvas);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-}
+})
 
 ////////////////////
 // Setup Resizing //
 ////////////////////
-export const Resized = new EventManager1();
+export const Resized = new EventManager<[Vector]>();
 export let screenSize = Vector.zero;
 
 function resize() {
@@ -64,7 +67,7 @@ resize();
 ////////////////
 // Draw Calls //
 ////////////////
-export function drawToScreen() {
+Draw.Subscribe(() => {
   if (document.hasFocus() || true) {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -135,4 +138,4 @@ export function drawToScreen() {
   }
 
   imagesToDraw = [];
-}
+})
