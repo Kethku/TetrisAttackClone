@@ -1,4 +1,5 @@
 import "babel-polyfill";
+import "./index.html";
 
 import { EventManager } from "./eventManager";
 
