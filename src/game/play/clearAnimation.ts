@@ -1,5 +1,5 @@
 import { Update, Draw } from "./events";
-import { EventManager } from "../eventManager";
+import { EventManager } from "../../eventManager";
 import { Block, BlockState, BlockType } from "./block";
 import { setBlock, gridToScreen, GridElement } from "./grid";
 import { garbageImages } from "../renderer/images";

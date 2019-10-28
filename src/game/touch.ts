@@ -1,6 +1,7 @@
 import { Vector } from "./math";
-import { Update } from "./events";
-import { canvas, screenSize } from "./renderer/webgl";
+import { Setup, Update } from "./events";
+import { CanvasMounted } from "./index";
+import { screenSize } from "./renderer/webgl";
 
 export let touchPosition = Vector.zero;
 export let touchId = null;
@@ -16,6 +17,14 @@ function handlePointerEvent(e: PointerEvent) {
   }
 }
 
+Setup.Subscribe(() => {
+  CanvasMounted.Subscribe((canvas) => {
+    canvas.addEventListener("pointerdown", handlePointerEvent);
+    canvas.addEventListener("pointerup", handlePointerEvent);
+    canvas.addEventListener("pointermove", handlePointerEvent);
+  });
+});
+
 let previousDown = false;
 Update.Subscribe(() => {
   touchStarted = touchDown && !previousDown;
@@ -23,7 +32,4 @@ Update.Subscribe(() => {
   previousDown = touchDown;
 });
 
-canvas.addEventListener("pointerdown", handlePointerEvent);
-canvas.addEventListener("pointerup", handlePointerEvent);
-canvas.addEventListener("pointermove", handlePointerEvent);
 

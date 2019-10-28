@@ -7,7 +7,7 @@ import { anyClearAnimations } from "./clearAnimation";
 
 import { Vector } from "../math";
 import * as gameOverScreen from "../gameOver";
-import { switchScreens } from "../client";
+import { switchScreens } from "../index";
 
 const maxInitialStackHeight = 5;
 const advanceAcceleration = 0.0000005;

@@ -5,7 +5,7 @@ import { MatchStarted, MatchCompleted } from "./match";
 import { previousFilledY } from "./advance";
 import { ClearAnimationStarted } from "./clearAnimation";
 
-import { EventManager } from "../eventManager";
+import { EventManager } from "../../eventManager";
 
 export const combos = new Set<Combo>();
 

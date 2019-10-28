@@ -1,8 +1,13 @@
 {
   "dependencies": {
+    "@types/react": "^16.9.11",
+    "@types/react-dom": "^16.9.3",
     "@types/socket.io": "^2.1.2",
     "babel-polyfill": "^6.26.0",
     "express": "^4.17.1",
+    "nes-react": "^1.0.2",
+    "react": "^16.11.0",
+    "react-dom": "^16.11.0",
     "socket.io": "^2.2.0",
     "twgl.js": "^4.9.0",
     "uws": "^100.0.1",

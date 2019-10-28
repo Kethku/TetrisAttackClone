@@ -1,4 +1,4 @@
-import { EventManager } from "./eventManager";
+import { EventManager } from "../eventManager";
 import { Vector } from "./math";
 import { screenSize } from "./renderer/webgl";
 import { image } from "./renderer/graphics";

@@ -3,7 +3,7 @@ import { Block, BlockState, BlockType, dropBlock, deleteBlock } from "./block";
 import { GridElement, getBlock, gridBlockDimensions } from "./grid";
 import { previousFilledY } from "./advance";
 import { Vector } from "../math";
-import { EventManager } from "../eventManager";
+import { EventManager } from "../../eventManager";
 
 export const clearDelay = 15;
 export const clearingTime = 15;
