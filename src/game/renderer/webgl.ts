@@ -2,7 +2,7 @@ import * as twgl from "twgl.js";
 
 import { Setup, Draw } from "../events";
 import { EventManager } from "../../eventManager";
-import { spliceArray, spliceData } from "../utils";
+import { spliceArray, spliceData } from "../../utils";
 import { setupTextures, TextureInfo } from "./imageMapUtils";
 import { Vector } from "../math";
 import { CanvasMounted } from "../index";
@@ -63,15 +63,14 @@ function resize() {
   screenSize = new Vector(window.innerWidth, window.innerHeight);
 
   if (canvas != null) {
-    canvas.width = screenSize.width;
-    canvas.height = screenSize.height;
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
   }
 
   Resized.Publish(screenSize);
 }
 
 window.addEventListener("resize", resize);
-resize();
 
 ////////////////
 // Draw Calls //

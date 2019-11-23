@@ -37,7 +37,6 @@ function loop() {
 }
 
 export const CanvasMounted = new EventManager<[HTMLCanvasElement]>();
-
 async function canvasMounted(newCanvas: HTMLCanvasElement) {
   await Promise.all(baseScreen.Setup.Publish());
 

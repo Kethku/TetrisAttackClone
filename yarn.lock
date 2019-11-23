@@ -113,6 +113,11 @@
     "@types/express-serve-static-core" "*"
     "@types/mime" "*"
 
+"@types/socket.io-client@^1.4.32":
+  version "1.4.32"
+  resolved "https://registry.yarnpkg.com/@types/socket.io-client/-/socket.io-client-1.4.32.tgz#988a65a0386c274b1c22a55377fab6a30789ac14"
+  integrity sha512-Vs55Kq8F+OWvy1RLA31rT+cAyemzgm0EWNeax6BWF8H7QiiOYMJIdcwSDdm5LVgfEkoepsWkS+40+WNb7BUMbg==
+
 "@types/socket.io@^2.1.2":
   version "2.1.4"
   resolved "https://registry.yarnpkg.com/@types/socket.io/-/socket.io-2.1.4.tgz#674e7bc193c5ccdadd4433f79f3660d31759e9ac"
@@ -6018,6 +6023,11 @@ ts-loader@^5.3.3:
     loader-utils "^1.0.2"
     micromatch "^3.1.4"
     semver "^5.0.1"
+
+ts-toolbelt@^4.9.30:
+  version "4.9.30"
+  resolved "https://registry.yarnpkg.com/ts-toolbelt/-/ts-toolbelt-4.9.30.tgz#302d6ae6b77cb9e56aa4dd51840a5dca18cd5746"
+  integrity sha512-RxLOznMz1ZhXZZJqWKO2BjUyWsRb4gUKd1vqlEEbJGtolAIcCNGf5LcoPxpCVccE6XdMjui1zs6MlFIoRf4ITA==
 
 tslib@^1.9.0:
   version "1.10.0"
