@@ -9,7 +9,7 @@
     "nes-react": "^1.0.2",
     "react": "^16.11.0",
     "react-dom": "^16.11.0",
-    "socket.io": "^2.2.0",
+    "socket.io": "^2.4.0",
     "twgl.js": "^4.9.0",
     "uws": "^100.0.1",
     "webpack-node-externals": "^1.7.2"
